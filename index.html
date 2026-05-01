@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TRAVELMAN – by Jerry Bridge</title>
+  <link href="https://cdn.jsdelivr.net/npm/inter-ui@4.1.0/inter.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0a1628;
+      --navy-light: #132240;
+      --gold: #c9944a;
+      --gold-light: #e4b872;
+      --cream: #f5f0e8;
+      --warm-gray: #a8a093;
+      --text: #e8e2d8;
+      --text-muted: #8a8279;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* === NAV === */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1rem 2rem;
+      background: rgba(10, 22, 40, 0.9);
+      backdrop-filter: blur(12px);
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(201, 148, 74, 0.15);
+    }
+    .nav-logo {
+      font-size: 0.85rem; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--gold); font-weight: 600;
+    }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      color: var(--warm-gray); text-decoration: none; font-size: 0.8rem;
+      letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.3s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* === HERO === */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      text-align: center; padding: 6rem 2rem 4rem;
+      position: relative;
+      background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 50%, var(--navy) 100%);
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: url('./assets/hero-btw.jpg') center/cover no-repeat;
+      opacity: 0.12;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 800px; }
+    .hero-subtitle {
+      font-size: 0.75rem; letter-spacing: 0.4em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.5rem; font-weight: 500;
+    }
+    .hero h1 {
+      font-size: clamp(3rem, 8vw, 6rem); font-weight: 200; letter-spacing: 0.15em;
+      line-height: 1.1; margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, var(--cream), var(--gold-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-author {
+      font-size: 1.1rem; color: var(--cream); font-weight: 300;
+      letter-spacing: 0.05em; margin-bottom: 2rem;
+    }
+    .hero-tagline {
+      font-size: 1.05rem; color: var(--cream); max-width: 550px;
+      margin: 0 auto 3rem; font-style: italic; line-height: 1.8;
+    }
+    .hero-cta {
+      display: inline-block; padding: 0.9rem 2.5rem;
+      background: var(--gold); color: var(--navy); text-decoration: none;
+      font-weight: 600; font-size: 0.85rem; letter-spacing: 0.15em;
+      text-transform: uppercase; border: none; cursor: pointer;
+      transition: all 0.3s;
+    }
+    .hero-cta:hover { background: var(--gold-light); transform: translateY(-2px); }
+
+    .scroll-indicator {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      animation: bounce 2s infinite;
+    }
+    .scroll-indicator span {
+      display: block; width: 1px; height: 40px; background: var(--gold); margin: 0 auto 0.5rem;
+    }
+    .scroll-indicator small { font-size: 0.65rem; letter-spacing: 0.2em; color: var(--warm-gray); text-transform: uppercase; }
+    @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(8px); } }
+
+    /* === SECTIONS === */
+    section { padding: 6rem 2rem; max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 0.7rem; letter-spacing: 0.35em; text-transform: uppercase;
+      color: var(--gold); font-weight: 600; margin-bottom: 1rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 300; line-height: 1.3;
+      margin-bottom: 2rem; color: var(--cream);
+    }
+
+    /* === HOOK === */
+    .hook { border-bottom: 1px solid rgba(201, 148, 74, 0.15); }
+    .hook-text {
+      font-size: 1.15rem; line-height: 2; color: var(--text);
+      max-width: 700px; font-weight: 300;
+    }
+    .hook-text em { color: var(--gold-light); font-style: normal; font-weight: 400; }
+
+    /* === GALLERY STRIP === */
+    .gallery-strip {
+      padding: 4rem 0;
+      background: var(--navy-light);
+      overflow: hidden;
+    }
+    .gallery-strip .section-label { padding-left: 2rem; }
+    .strip-scroll {
+      display: flex; gap: 1.5rem; padding: 1.5rem 2rem;
+      overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .strip-scroll::-webkit-scrollbar { height: 4px; }
+    .strip-scroll::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+    .strip-item {
+      flex: 0 0 280px; scroll-snap-align: start;
+      position: relative; overflow: hidden; border-radius: 4px;
+      cursor: pointer; transition: transform 0.3s;
+    }
+    .strip-item:hover { transform: scale(1.03); }
+    .strip-item img {
+      width: 100%; height: 360px; object-fit: cover;
+      filter: sepia(0.1) contrast(1.05);
+    }
+    .strip-item .caption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(10, 22, 40, 0.9));
+      padding: 3rem 1rem 1rem;
+      font-size: 0.75rem; color: var(--warm-gray); letter-spacing: 0.05em;
+    }
+
+    /* === JOURNEY TIMELINE === */
+    .timeline { position: relative; }
+    .timeline::before {
+      content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+      width: 1px; background: rgba(201, 148, 74, 0.2); transform: translateX(-50%);
+    }
+    .timeline-item {
+      display: flex; align-items: flex-start; gap: 3rem;
+      margin-bottom: 4rem; position: relative;
+    }
+    .timeline-item:nth-child(even) { flex-direction: row-reverse; }
+    .timeline-item .tl-content { flex: 1; }
+    .timeline-item .tl-image { flex: 1; }
+    .timeline-item .tl-image img {
+      width: 100%; border-radius: 4px;
+      filter: sepia(0.15) contrast(1.05);
+    }
+    .tl-year {
+      font-size: 0.7rem; letter-spacing: 0.3em; color: var(--gold);
+      text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 600;
+    }
+    .tl-heading { font-size: 1.4rem; font-weight: 400; margin-bottom: 0.8rem; color: var(--cream); }
+    .tl-text { color: var(--text-muted); font-size: 0.95rem; line-height: 1.8; }
+
+    /* === AUTHOR === */
+    .author-section {
+      background: var(--navy-light);
+      padding: 6rem 2rem;
+    }
+    .author-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1.5fr; gap: 4rem; align-items: center;
+    }
+    .author-image img {
+      width: 100%; border-radius: 4px;
+      filter: sepia(0.1) contrast(1.05);
+    }
+    .author-bio p { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.9; }
+    .author-bio p:first-of-type { font-size: 1.05rem; color: var(--text); }
+
+    /* === COMPARE === */
+    .compare-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;
+      margin-top: 2rem;
+    }
+    .compare-card {
+      background: var(--navy-light); border-radius: 6px; padding: 2rem;
+      border: 1px solid rgba(201, 148, 74, 0.1);
+      transition: border-color 0.3s;
+    }
+    .compare-card:hover { border-color: rgba(201, 148, 74, 0.3); }
+    .compare-card h3 { font-size: 1.1rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--cream); }
+    .compare-card .by { font-size: 0.8rem; color: var(--gold); margin-bottom: 1rem; }
+    .compare-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; }
+
+    /* === AWARDS === */
+    .awards-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .award-item { text-align: center; }
+    .award-item img {
+      width: 100%; height: 220px; object-fit: cover; border-radius: 4px;
+      margin-bottom: 0.8rem; filter: sepia(0.1);
+    }
+    .award-item .award-label { font-size: 0.75rem; color: var(--warm-gray); letter-spacing: 0.05em; }
+
+    /* === CTA === */
+    .cta-section {
+      text-align: center; padding: 8rem 2rem;
+      background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
+      position: relative;
+    }
+    .cta-section h2 {
+      font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 200;
+      color: var(--cream); margin-bottom: 1rem;
+    }
+    .cta-section p { color: var(--text-muted); max-width: 500px; margin: 0 auto 2.5rem; font-size: 1rem; }
+    .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .cta-secondary {
+      display: inline-block; padding: 0.9rem 2.5rem;
+      background: transparent; color: var(--gold); text-decoration: none;
+      font-weight: 600; font-size: 0.85rem; letter-spacing: 0.15em;
+      text-transform: uppercase; border: 1px solid var(--gold);
+      cursor: pointer; transition: all 0.3s;
+    }
+    .cta-secondary:hover { background: rgba(201, 148, 74, 0.1); }
+
+    /* === QUOTE === */
+    .quote-block {
+      padding: 4rem 2rem; text-align: center;
+      border-top: 1px solid rgba(201, 148, 74, 0.15);
+      border-bottom: 1px solid rgba(201, 148, 74, 0.15);
+      margin: 2rem auto; max-width: 1100px;
+    }
+    .quote-block blockquote {
+      font-size: 1.3rem; font-style: italic; color: var(--cream);
+      max-width: 700px; margin: 0 auto 1rem; font-weight: 300; line-height: 1.8;
+    }
+    .quote-block cite { color: var(--gold); font-size: 0.85rem; font-style: normal; letter-spacing: 0.1em; }
+
+    /* === FOOTER === */
+    footer {
+      padding: 3rem 2rem; text-align: center;
+      border-top: 1px solid rgba(201, 148, 74, 0.1);
+      font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 768px) {
+      .timeline::before { left: 1rem; }
+      .timeline-item, .timeline-item:nth-child(even) {
+        flex-direction: column; gap: 1.5rem;
+      }
+      .author-inner { grid-template-columns: 1fr; }
+      .compare-grid { grid-template-columns: 1fr; }
+      .awards-grid { grid-template-columns: repeat(2, 1fr); }
+      .nav-links { display: none; }
+    }
+
+    /* === ANIMATIONS === */
+    .fade-in {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">Travelman</div>
+    <ul class="nav-links">
+      <li><a href="#about">The Book</a></li>
+      <li><a href="#journey">The Journey</a></li>
+      <li><a href="#author">The Author</a></li>
+      <li><a href="#gallery">Gallery</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-subtitle">A memoir of travel, business & ambition</p>
+      <h1>TRAVELMAN</h1>
+      <p class="hero-author">by Jerry Bridge</p>
+      <p class="hero-tagline">
+        "I didn't set out to write a business story. I set out to see the world.
+        But somewhere between sleeping in the back of a car in Australia and opening
+        the doors to a tiny office in Camden Town, travel became something else entirely."
+      </p>
+      <a href="#about" class="hero-cta">Discover the Story</a>
+    </div>
+    <div class="scroll-indicator">
+      <span></span>
+      <small>Scroll</small>
+    </div>
+  </section>
+
+  <!-- HOOK -->
+  <section class="hook" id="about">
+    <p class="section-label">The Book</p>
+    <h2 class="section-title">From Backpacker to Business Builder</h2>
+    <div class="hook-text">
+      <p>
+        In the 1980s, long before online booking and budget airlines, Jerry Bridge set out
+        to build a travel company from <em>a scrappy office in Camden Town</em>.
+      </p>
+      <br>
+      <p>
+        What followed was a twenty-year journey through risk, relentless pressure, and the
+        shifting world of long-haul travel — where survival depended on <em>instinct,
+        relationships, and nerve</em>.
+      </p>
+      <br>
+      <p>
+        Travelman is the story of what it takes to build something from nothing —
+        and what it costs along the way. It's a story about a father's legacy,
+        a passion for travel that became an obsession, and the
+        <em>grit behind every departure board and airline deal</em>.
+      </p>
+    </div>
+  </section>
+
+  <!-- PHOTO STRIP -->
+  <div class="gallery-strip" id="gallery">
+    <p class="section-label">From the Archives</p>
+    <div class="strip-scroll">
+
+      <div class="strip-item">
+        <img src="./assets/london-travel.jpg" alt="London Travel Service 1970" />
+        <div class="caption">London Travel Service, 1970/71</div>
+      </div>
+      <div class="strip-item">
+        <img src="./assets/swiss-holidays.jpg" alt="Swiss Holidays" />
+        <div class="caption">Swiss Holidays — the family legacy</div>
+      </div>
+      <div class="strip-item">
+        <img src="./assets/switzerland.jpg" alt="Switzerland brochure" />
+        <div class="caption">Vintage Switzerland travel brochure</div>
+      </div>
+
+
+      <div class="strip-item">
+        <img src="./assets/majorca.jpg" alt="Majorca holidays" />
+        <div class="caption">"Rent a Flat in Majorca" — 15 days from £34</div>
+      </div>
+
+
+      <div class="strip-item">
+        <img src="./assets/jerry-david.jpg" alt="Jerry and David" />
+        <div class="caption">Jerry &amp; David — partners in travel</div>
+      </div>
+      <div class="strip-item">
+        <img src="./assets/launch-party.jpg" alt="Launch party" />
+        <div class="caption">The launch party — celebrating a milestone</div>
+      </div>
+      <div class="strip-item">
+        <img src="./assets/early-team.jpg" alt="The early team" />
+        <div class="caption">The early team — building the dream together</div>
+      </div>
+      <div class="strip-item">
+        <img src="./assets/piccadilly-award.jpg" alt="Piccadilly tourism award" />
+        <div class="caption">Service to tourism — Piccadilly, 1973</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- QUOTE -->
+  <div class="quote-block">
+    <blockquote>
+      "An ordinary man who followed his passion for travel and turned it
+      into a successful career — and life."
+    </blockquote>
+    <cite>— Jerry Bridge</cite>
+  </div>
+
+  <!-- JOURNEY TIMELINE -->
+  <section class="timeline" id="journey">
+    <p class="section-label">The Journey</p>
+    <h2 class="section-title">Twenty Years of Risk, Travel & Ambition</h2>
+
+    <div class="timeline-item fade-in">
+      <div class="tl-content">
+        <p class="tl-year">The Beginning</p>
+        <h3 class="tl-heading">A Father's Legacy</h3>
+        <p class="tl-text">
+          Jerry's father Walter was an early pioneer of UK travel. His company,
+          Swiss Travel Service, established in 1949, was among the first to offer
+          travel to everyday people after the Second World War. He encouraged
+          Jerry to buy his first backpack and go hitch-hiking at sixteen.
+        </p>
+      </div>
+      <div class="tl-image">
+        <img src="./assets/walter-bridge.jpg" alt="Walter Bridge" />
+      </div>
+    </div>
+
+    <div class="timeline-item fade-in">
+      <div class="tl-content">
+        <p class="tl-year">The Adventure</p>
+        <h3 class="tl-heading">22 Months Overland to Australia</h3>
+        <p class="tl-text">
+          After university, Jerry embarked on an incredible 22-month overland trip
+          to Australia — without mobile phone, guidebook, or credit card. A 24,000 km
+          road trip in a beat-up Holden station wagon. The kind of adventure that
+          no longer exists.
+        </p>
+      </div>
+      <div class="tl-image">
+        <img src="./assets/travel-montage.jpg" alt="Travel adventure" />
+      </div>
+    </div>
+
+    <div class="timeline-item fade-in">
+      <div class="tl-content">
+        <p class="tl-year">Camden Town</p>
+        <h3 class="tl-heading">Building Bridge the World</h3>
+        <p class="tl-text">
+          From a scrappy office in Camden Town, Jerry built Bridge the World into a
+          travel powerhouse — 150 staff, turning over £50 million, selling flights
+          and holidays to Australia, New Zealand, and Round the World itineraries.
+          All built on instinct, relationships, and nerve.
+        </p>
+      </div>
+      <div class="tl-image">
+        <img src="./assets/first-booking-phone.jpg" alt="The first booking — where it all started" />
+      </div>
+    </div>
+
+    <div class="timeline-item fade-in">
+      <div class="tl-content">
+        <p class="tl-year">Recognition</p>
+        <h3 class="tl-heading">Awards & Industry Impact</h3>
+        <p class="tl-text">
+          Entrepreneur of the Year. OzCARS Winner for Outstanding Contribution
+          to the Australian Tourism Industry. Multiple travel awards.
+          The industry recognised what Jerry had built — and the travel trade
+          would never be quite the same.
+        </p>
+      </div>
+      <div class="tl-image">
+        <img src="./assets/ozcars-winner.jpg" alt="Awards" />
+      </div>
+    </div>
+  </section>
+
+  <!-- AWARDS STRIP -->
+  <section>
+    <p class="section-label">Recognition</p>
+    <div class="awards-grid">
+      <div class="award-item">
+        <img src="./assets/award-gold.jpg" alt="Gold award" />
+        <p class="award-label">Travel Industry Award</p>
+      </div>
+      <div class="award-item">
+        <img src="./assets/globe-award.jpg" alt="Globe award" />
+        <p class="award-label">The Observer Travel Award</p>
+      </div>
+      <div class="award-item">
+        <img src="./assets/aus-tourism-award.jpg" alt="Australian Tourism Award" />
+        <p class="award-label">Australian Tourism Award</p>
+      </div>
+      <div class="award-item">
+        <img src="./assets/entrepreneur-award.jpg" alt="Entrepreneur award" />
+        <p class="award-label">Entrepreneur of the Year 2000</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUTHOR -->
+  <div class="author-section" id="author">
+    <div class="author-inner">
+      <div class="author-image">
+        <img src="./assets/jerry-headshot.jpg" alt="Jerry Bridge" />
+      </div>
+      <div class="author-bio">
+        <p class="section-label">About the Author</p>
+        <h2 class="section-title">Jerry Bridge</h2>
+        <p>
+          Jerry Bridge turned a passion for travel into a career spanning three decades.
+          From backpacking across Europe at sixteen to building one of the UK's leading
+          long-haul travel agencies, his story is one of relentless ambition, risk-taking,
+          and the kind of entrepreneurial grit you can't learn from a textbook.
+        </p>
+        <p>
+          Today, Jerry lives in Wellington, New Zealand, where he continues to work in
+          the travel industry through New Zealand Vacations and What to do in Wellington.
+          Travelman is his first book — a memoir that's part business story, part travel
+          adventure, and part love letter to a world that no longer exists.
+        </p>
+        <p>
+          His mission is simple: to inspire people to fulfil their dreams.
+          To go for it. Get their hands dirty. To prove that with faith,
+          determination and hard work, anything is possible.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARABLE READS -->
+  <section>
+    <p class="section-label">If You Liked...</p>
+    <h2 class="section-title">For Readers Who Enjoy</h2>
+    <div class="compare-grid">
+      <div class="compare-card">
+        <h3>Shoe Dog</h3>
+        <p class="by">Phil Knight</p>
+        <p>
+          The messy, perilous, and chaotic journey of building Nike from nothing.
+          Travelman brings the same raw honesty — but set in the world of
+          international travel.
+        </p>
+      </div>
+      <div class="compare-card">
+        <h3>Losing My Virginity</h3>
+        <p class="by">Richard Branson</p>
+        <p>
+          Branson's entrepreneurial adventure and larger-than-life personality.
+          Jerry's story sits in the same territory — risk, ambition, and a
+          refusal to play it safe.
+        </p>
+      </div>
+      <div class="compare-card">
+        <h3>The Alchemist</h3>
+        <p class="by">Paulo Coelho</p>
+        <p>
+          Following your heart even when your head tells you to do something
+          different. Travelman is the real-life version of that journey —
+          a personal legend played out across the globe.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="contact">
+    <h2>The Journey Starts Here</h2>
+    <p>
+      Coming soon. Sign up to be notified when Travelman launches,
+      read exclusive chapters, and join the journey.
+    </p>
+    <div class="cta-buttons">
+      <a href="mailto:jerry@bridgetravels.com" class="hero-cta">Get in Touch</a>
+      <a href="https://bridgetravels.com" class="cta-secondary" target="_blank">Visit Bridge Travels</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>&copy; 2026 Jerry Bridge. All rights reserved.</p>
+    <p style="margin-top: 0.5rem;">
+      <a href="https://bridgetravels.com" target="_blank">bridgetravels.com</a>
+      &nbsp;&bull;&nbsp;
+      <a href="https://whattodoinwellington.com" target="_blank">whattodoinwellington.com</a>
+    </p>
+  </footer>
+
+  <!-- SCROLL ANIMATIONS -->
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Smooth nav scroll
+    document.querySelectorAll('nav a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
+
+</body>
+</html>
