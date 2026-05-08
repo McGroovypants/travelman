@@ -427,21 +427,8 @@ body {
   </div>
 </div>
 
-<!-- SETUP / CONFIG -->
-<div id="setup">
-  <div class="setup-box">
-    <h2>First-Time Setup</h2>
-    <p style="color: var(--text-dim); margin-bottom: 20px; font-size: 14px; line-height: 1.5;">
-      Paste your GitHub access token below. You only need to do this once — it's saved securely in your browser.
-    </p>
-    <div class="field">
-      <label>Access Token</label>
-      <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxx">
-      <div class="hint">Create one at <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--gold);">github.com/settings/tokens</a> with <strong>repo</strong> scope.</div>
-    </div>
-    <button class="setup-btn" id="loadBtn" onclick="loadSite()">Connect &amp; Load Site</button>
-  </div>
-</div>
+<!-- Setup screen removed — PAT is encrypted in the access code -->
+<div id="setup" style="display:none;"></div>
 
 <!-- MAIN EDITOR -->
 <div id="editor">
@@ -470,7 +457,7 @@ body {
     </div>
   </div>
   <div class="deploy-bar">
-    <button class="back-btn" onclick="backToSetup()">Token Settings</button>
+    <button class="back-btn" onclick="location.reload()">Log Out</button>
     <span class="change-count" id="changeCount">No changes</span>
     <button class="deploy-btn" id="deployBtn" onclick="deploySite()" disabled>Deploy Changes</button>
   </div>
@@ -489,6 +476,18 @@ body {
 // CONFIG
 // ==========================================
 const ACCESS_CODE_HASH = 'ad1454c7b344ab6c524d0164f993e110f18ab9e9b13bd6f96667875fa335f6e9';
+const ENCRYPTED_PAT = '+OUr1G4Q+xWd0Frh2DYqaGYLXxCaD7raV1sdskTH9T6/MZrpZxl8ArSYcWF4JZayLJUI0pQ5QFejkE+JC4ccodFdKzP8Bktjovwt+h8EgZvNgy9f';
+
+async function decryptPat(accessCode) {
+  const blob = Uint8Array.from(atob(ENCRYPTED_PAT), c => c.charCodeAt(0));
+  const salt = blob.slice(0, 16);
+  const iv = blob.slice(16, 28);
+  const ciphertext = blob.slice(28);
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(accessCode), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  return new TextDecoder().decode(decrypted);
+}
 
 // ==========================================
 // STATE
@@ -538,15 +537,20 @@ document.getElementById('codeInput').addEventListener('keydown', e => {
 
 async function checkCode() {
   const input = document.getElementById('codeInput');
-  const hash = await sha256(input.value);
+  const code = input.value;
+  const hash = await sha256(code);
   if (hash === ACCESS_CODE_HASH) {
-    // Check for saved PAT — auto-load if found
-    const saved = localStorage.getItem('site-editor-pat');
-    if (saved) {
-      document.getElementById('patInput').value = saved;
-      loadSite(); // Skip setup, go straight to editor
-    } else {
-      show('setup');
+    try {
+      const pat = await decryptPat(code);
+      state.pat = pat;
+      state.owner = 'McGroovypants';
+      state.repo = 'travelman';
+      state.filePath = 'index.html';
+      loadSiteAuto();
+    } catch(e) {
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 400);
+      input.value = '';
     }
   } else {
     input.classList.add('error');
@@ -742,24 +746,10 @@ function buildSelector(el) {
 // LOAD SITE
 // ==========================================
 async function loadSite() {
-  const pat = document.getElementById('patInput').value.trim();
-  // Hardcoded config — this editor is built for the Travelman site
-  const owner = 'McGroovypants';
-  const repo = 'travelman';
-  const filePath = 'index.html';
+  loadSiteAuto();
+}
 
-  if (!pat) {
-    alert('Please enter your access token');
-    return;
-  }
-
-  state.pat = pat;
-  state.owner = owner;
-  state.repo = repo;
-  state.filePath = filePath;
-
-  // Save token to localStorage
-  localStorage.setItem('site-editor-pat', pat);
+async function loadSiteAuto() {
 
   showLoading('Fetching site from GitHub...');
 
