@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Editor</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1729;
+  --surface: #1a2332;
+  --surface2: #243044;
+  --border: #2d3f56;
+  --text: #e8e8e8;
+  --text-dim: #8899aa;
+  --gold: #d4a853;
+  --gold-dim: #b8922e;
+  --accent: #4a9eff;
+  --danger: #ff5555;
+  --success: #44cc66;
+  --orange: #ff9933;
+  --radius: 8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* === ACCESS CODE GATE === */
+#gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg);
+}
+.gate-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 48px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+.gate-box h1 {
+  color: var(--gold);
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.gate-box p {
+  color: var(--text-dim);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+.gate-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 8px;
+  outline: none;
+}
+.gate-input:focus { border-color: var(--gold); }
+.gate-input.error { border-color: var(--danger); animation: shake 0.3s; }
+@keyframes shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.gate-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 16px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gate-btn:hover { background: var(--gold-dim); }
+
+/* === SETUP SCREEN === */
+#setup {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+.setup-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 520px;
+  width: 90%;
+}
+.setup-box h2 { color: var(--gold); margin-bottom: 20px; }
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+.field input:focus { border-color: var(--gold); }
+.field .hint { color: var(--text-dim); font-size: 11px; margin-top: 4px; }
+.setup-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.setup-btn:hover { background: var(--gold-dim); }
+.setup-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === MAIN EDITOR === */
+#editor {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+}
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.editor-header h2 { font-size: 16px; color: var(--gold); }
+.editor-header .site-name { color: var(--text-dim); font-size: 13px; }
+
+.editor-body { display: flex; flex: 1; overflow: hidden; }
+
+/* Live preview */
+.preview-col {
+  width: 35%;
+  min-width: 280px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.preview-col .col-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+}
+.col-header h3 { font-size: 13px; font-weight: 600; }
+.col-header a {
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+.preview-col iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+}
+
+/* Section list */
+.sections-col {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+.sections-col .col-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.section-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+.section-card {
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s;
+}
+.section-card:hover { background: var(--surface2); }
+.section-card.active { background: var(--surface2); border-left: 3px solid var(--gold); }
+.section-card .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.section-card .badge {
+  background: var(--orange);
+  color: var(--bg);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+.section-card .meta {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Editor panel */
+.editor-col {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--bg);
+}
+.editor-col h3 {
+  color: var(--gold);
+  font-size: 18px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.editor-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
+.element-group {
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.element-group.changed { border-color: var(--orange); }
+.element-group .el-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.element-group .el-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.element-group .el-changed {
+  font-size: 10px;
+  color: var(--orange);
+  font-weight: 600;
+}
+.element-group textarea,
+.element-group input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+.element-group textarea:focus,
+.element-group input[type="text"]:focus { border-color: var(--gold); }
+.element-group textarea { min-height: 60px; }
+
+.reset-btn {
+  margin-top: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.reset-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+/* Image elements */
+.img-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.img-preview img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+.img-preview .img-info {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+.swap-btn {
+  padding: 6px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.swap-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Deploy bar */
+.deploy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.deploy-bar .change-count {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.deploy-bar .change-count strong { color: var(--orange); }
+.deploy-btn {
+  padding: 8px 24px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.deploy-btn:hover { background: var(--gold-dim); }
+.deploy-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.deploy-btn.success { background: var(--success); }
+.deploy-btn.error { background: var(--danger); }
+.back-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+.back-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+/* Loading */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,41,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: var(--text-dim); margin-top: 12px; font-size: 14px; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<!-- ACCESS CODE GATE -->
+<div id="gate">
+  <div class="gate-box">
+    <h1>Site Editor</h1>
+    <p>Enter the access code to continue</p>
+    <input type="password" id="codeInput" class="gate-input" maxlength="10" placeholder="------" autocomplete="off">
+    <button class="gate-btn" onclick="checkCode()">Enter</button>
+  </div>
+</div>
+
+<!-- SETUP / CONFIG -->
+<div id="setup">
+  <div class="setup-box">
+    <h2>Connect to GitHub</h2>
+    <div class="field">
+      <label>GitHub Personal Access Token</label>
+      <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxx">
+      <div class="hint">Needs repo scope. Stored in your browser only.</div>
+    </div>
+    <div class="field">
+      <label>Repository Owner</label>
+      <input type="text" id="ownerInput" value="McGroovypants">
+    </div>
+    <div class="field">
+      <label>Repository Name</label>
+      <input type="text" id="repoInput" value="travelman">
+    </div>
+    <div class="field">
+      <label>HTML File Path</label>
+      <input type="text" id="fileInput" value="index.html">
+      <div class="hint">Path within the repo (e.g. index.html)</div>
+    </div>
+    <button class="setup-btn" id="loadBtn" onclick="loadSite()">Load Site</button>
+  </div>
+</div>
+
+<!-- MAIN EDITOR -->
+<div id="editor">
+  <div class="editor-header">
+    <div>
+      <h2>Site Editor</h2>
+      <span class="site-name" id="siteLabel"></span>
+    </div>
+  </div>
+  <div class="editor-body">
+    <div class="preview-col">
+      <div class="col-header">
+        <h3>Live Preview</h3>
+        <a id="previewLink" href="#" target="_blank">Open site &#8599;</a>
+      </div>
+      <iframe id="previewFrame" title="Live site preview"></iframe>
+    </div>
+    <div class="sections-col">
+      <div class="col-header">
+        <h3>Sections</h3>
+      </div>
+      <div class="section-list" id="sectionList"></div>
+    </div>
+    <div class="editor-col" id="editorCol">
+      <div class="editor-empty">Select a section to edit</div>
+    </div>
+  </div>
+  <div class="deploy-bar">
+    <button class="back-btn" onclick="backToSetup()">Settings</button>
+    <span class="change-count" id="changeCount">No changes</span>
+    <button class="deploy-btn" id="deployBtn" onclick="deploySite()" disabled>Deploy Changes</button>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" style="display:none" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Loading...</div>
+</div>
+
+<input type="file" id="fileChooser" accept="image/*" style="display:none">
+
+<script>
+// ==========================================
+// CONFIG
+// ==========================================
+const ACCESS_CODE_HASH = '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8'; // sha256 of 'password'
+
+// ==========================================
+// STATE
+// ==========================================
+let state = {
+  pat: '',
+  owner: '',
+  repo: '',
+  filePath: '',
+  originalHtml: '',
+  sections: [],
+  selectedSectionId: null,
+  fileSha: '',
+  pendingImageSwap: null // { sectionIdx, elementIdx }
+};
+
+// ==========================================
+// UTILITIES
+// ==========================================
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function show(id) {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('editor').style.display = 'none';
+  document.getElementById(id).style.display = id === 'editor' ? 'flex' : 'flex';
+}
+
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ==========================================
+// ACCESS CODE
+// ==========================================
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkCode();
+});
+
+async function checkCode() {
+  const input = document.getElementById('codeInput');
+  const hash = await sha256(input.value);
+  if (hash === ACCESS_CODE_HASH) {
+    // Check for saved PAT
+    const saved = localStorage.getItem('site-editor-pat');
+    if (saved) {
+      document.getElementById('patInput').value = saved;
+    }
+    const savedOwner = localStorage.getItem('site-editor-owner');
+    const savedRepo = localStorage.getItem('site-editor-repo');
+    const savedFile = localStorage.getItem('site-editor-file');
+    if (savedOwner) document.getElementById('ownerInput').value = savedOwner;
+    if (savedRepo) document.getElementById('repoInput').value = savedRepo;
+    if (savedFile) document.getElementById('fileInput').value = savedFile;
+    show('setup');
+  } else {
+    input.classList.add('error');
+    setTimeout(() => input.classList.remove('error'), 400);
+    input.value = '';
+  }
+}
+
+// ==========================================
+// GITHUB API
+// ==========================================
+async function ghFetch(path, options = {}) {
+  const url = `https://api.github.com/repos/${state.owner}/${state.repo}/${path}`;
+  const headers = {
+    'Authorization': `Bearer ${state.pat}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...options.headers
+  };
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub API ${res.status}: ${body}`);
+  }
+  return res.json();
+}
+
+async function fetchFile(path) {
+  const data = await ghFetch(`contents/${path}`);
+  const content = atob(data.content.replace(/\n/g, ''));
+  return { content, sha: data.sha };
+}
+
+async function pushFile(path, content, message, sha) {
+  return ghFetch(`contents/${path}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      message,
+      content: btoa(unescape(encodeURIComponent(content))),
+      sha,
+      branch: 'main'
+    })
+  });
+}
+
+async function pushBinaryFile(path, base64Content, message) {
+  // Check if file exists to get sha
+  let sha;
+  try {
+    const existing = await ghFetch(`contents/${path}`);
+    sha = existing.sha;
+  } catch (e) {
+    sha = undefined;
+  }
+  const body = { message, content: base64Content, branch: 'main' };
+  if (sha) body.sha = sha;
+  return ghFetch(`contents/${path}`, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  });
+}
+
+// ==========================================
+// HTML PARSER
+// ==========================================
+function parseHtml(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const sections = [];
+
+  // Find all sections and major containers
+  const candidates = doc.querySelectorAll('section, [id], header, footer, main, .hero, .gallery, .timeline, .awards, .about, .cta');
+  const seen = new Set();
+
+  candidates.forEach(el => {
+    if (seen.has(el)) return;
+    seen.add(el);
+
+    const id = el.id || el.className.split(/\s+/)[0] || `section-${sections.length}`;
+    const tag = el.tagName.toLowerCase();
+
+    // Get section name from heading or id
+    const heading = el.querySelector('h1, h2, h3');
+    const name = heading ? heading.textContent.trim().substring(0, 50) :
+                 el.id ? el.id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) :
+                 `${tag} ${sections.length + 1}`;
+
+    // Find text elements
+    const textElements = [];
+    el.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, blockquote, figcaption, cite, em, strong, li, .tagline, .subtitle, .quote-text').forEach(textEl => {
+      const text = textEl.textContent.trim();
+      if (!text || text.length < 2) return;
+      // Skip if this is just a container for other elements we'll capture
+      if (textEl.querySelector('h1, h2, h3, h4, h5, h6, p')) return;
+
+      const elTag = textEl.tagName.toLowerCase();
+      const selector = buildSelector(textEl);
+      if (!selector) return;
+
+      textElements.push({
+        id: `txt-${textElements.length}`,
+        tag: elTag,
+        selector,
+        content: text,
+        originalContent: text,
+        innerHTML: textEl.innerHTML.trim(),
+        originalInnerHTML: textEl.innerHTML.trim()
+      });
+    });
+
+    // Find image elements
+    const imageElements = [];
+    el.querySelectorAll('img').forEach(img => {
+      const src = img.getAttribute('src') || '';
+      const alt = img.getAttribute('alt') || '';
+      const selector = buildSelector(img);
+      if (!selector) return;
+
+      imageElements.push({
+        id: `img-${imageElements.length}`,
+        selector,
+        src,
+        originalSrc: src,
+        alt,
+        originalAlt: alt,
+        newFileBase64: null,
+        newFileName: null
+      });
+    });
+
+    // Also find background images
+    el.querySelectorAll('[style*="background"]').forEach(bgEl => {
+      const style = bgEl.getAttribute('style') || '';
+      const match = style.match(/url\(['"]?([^'")\s]+)['"]?\)/);
+      if (!match) return;
+      const src = match[1];
+      const selector = buildSelector(bgEl);
+      if (!selector) return;
+
+      imageElements.push({
+        id: `bg-${imageElements.length}`,
+        selector,
+        src,
+        originalSrc: src,
+        alt: '',
+        originalAlt: '',
+        isBgImage: true,
+        newFileBase64: null,
+        newFileName: null
+      });
+    });
+
+    if (textElements.length > 0 || imageElements.length > 0) {
+      sections.push({
+        id,
+        name,
+        tag,
+        textElements,
+        imageElements,
+        outerSelector: buildSelector(el)
+      });
+    }
+  });
+
+  return sections;
+}
+
+function buildSelector(el) {
+  if (el.id) return `#${CSS.escape(el.id)}`;
+
+  const path = [];
+  let current = el;
+  while (current && current !== document.body && current.nodeType === 1) {
+    let selector = current.tagName.toLowerCase();
+    if (current.id) {
+      path.unshift(`#${CSS.escape(current.id)} > ${selector}`);
+      break;
+    }
+    if (current.parentElement) {
+      const siblings = Array.from(current.parentElement.children).filter(c => c.tagName === current.tagName);
+      if (siblings.length > 1) {
+        const idx = siblings.indexOf(current) + 1;
+        selector += `:nth-of-type(${idx})`;
+      }
+    }
+    path.unshift(selector);
+    current = current.parentElement;
+  }
+  return path.join(' > ');
+}
+
+// ==========================================
+// LOAD SITE
+// ==========================================
+async function loadSite() {
+  const pat = document.getElementById('patInput').value.trim();
+  const owner = document.getElementById('ownerInput').value.trim();
+  const repo = document.getElementById('repoInput').value.trim();
+  const filePath = document.getElementById('fileInput').value.trim();
+
+  if (!pat || !owner || !repo || !filePath) {
+    alert('Please fill in all fields');
+    return;
+  }
+
+  state.pat = pat;
+  state.owner = owner;
+  state.repo = repo;
+  state.filePath = filePath;
+
+  // Save to localStorage
+  localStorage.setItem('site-editor-pat', pat);
+  localStorage.setItem('site-editor-owner', owner);
+  localStorage.setItem('site-editor-repo', repo);
+  localStorage.setItem('site-editor-file', filePath);
+
+  showLoading('Fetching site from GitHub...');
+
+  try {
+    const { content, sha } = await fetchFile(filePath);
+    state.originalHtml = content;
+    state.fileSha = sha;
+
+    showLoading('Parsing sections...');
+    state.sections = parseHtml(content);
+    state.selectedSectionId = state.sections.length > 0 ? state.sections[0].id : null;
+
+    // Setup preview
+    const siteUrl = `https://${owner}.github.io/${repo}/`;
+    document.getElementById('previewLink').href = siteUrl;
+    document.getElementById('previewFrame').src = siteUrl;
+    document.getElementById('siteLabel').textContent = `${owner}/${repo}`;
+
+    renderSections();
+    renderEditor();
+    updateChangeCount();
+    show('editor');
+  } catch (err) {
+    alert('Failed to load site: ' + err.message);
+    console.error(err);
+  } finally {
+    hideLoading();
+  }
+}
+
+// ==========================================
+// RENDER SECTION LIST
+// ==========================================
+function renderSections() {
+  const list = document.getElementById('sectionList');
+  list.innerHTML = '';
+
+  state.sections.forEach(section => {
+    const changes = countSectionChanges(section);
+    const card = document.createElement('div');
+    card.className = `section-card${section.id === state.selectedSectionId ? ' active' : ''}`;
+    card.onclick = () => {
+      state.selectedSectionId = section.id;
+      renderSections();
+      renderEditor();
+    };
+
+    let html = `<div>
+      <div class="name">${escapeHtml(section.name)}</div>
+      <div class="meta">${section.textElements.length}T ${section.imageElements.length}I</div>
+    </div>`;
+    if (changes > 0) {
+      html += `<span class="badge">${changes}</span>`;
+    }
+    card.innerHTML = html;
+    list.appendChild(card);
+  });
+}
+
+function countSectionChanges(section) {
+  let count = 0;
+  section.textElements.forEach(te => {
+    if (te.content !== te.originalContent) count++;
+  });
+  section.imageElements.forEach(ie => {
+    if (ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
+  });
+  return count;
+}
+
+// ==========================================
+// RENDER EDITOR
+// ==========================================
+function renderEditor() {
+  const col = document.getElementById('editorCol');
+  const section = state.sections.find(s => s.id === state.selectedSectionId);
+
+  if (!section) {
+    col.innerHTML = '<div class="editor-empty">Select a section to edit</div>';
+    return;
+  }
+
+  let html = `<h3>${escapeHtml(section.name)}</h3>`;
+
+  // Text elements
+  section.textElements.forEach((te, i) => {
+    const changed = te.content !== te.originalContent;
+    const isLong = te.content.length > 80;
+    html += `<div class="element-group${changed ? ' changed' : ''}">
+      <div class="el-label">
+        <span class="el-tag">${te.tag}</span>
+        ${changed ? '<span class="el-changed">Modified</span>' : ''}
+      </div>
+      ${isLong ?
+        `<textarea data-section="${section.id}" data-element="${te.id}" data-type="text"
+          oninput="handleTextEdit(this)">${escapeHtml(te.content)}</textarea>` :
+        `<input type="text" data-section="${section.id}" data-element="${te.id}" data-type="text"
+          oninput="handleTextEdit(this)" value="${escapeAttr(te.content)}">`
+      }
+      ${changed ? `<button class="reset-btn" onclick="resetElement('${section.id}','${te.id}','text')">Reset</button>` : ''}
+    </div>`;
+  });
+
+  // Image elements
+  section.imageElements.forEach((ie, i) => {
+    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64;
+    const imgSrc = ie.newFileBase64 ?
+      `data:image/jpeg;base64,${ie.newFileBase64}` :
+      resolveImageUrl(ie.src);
+
+    html += `<div class="element-group${changed ? ' changed' : ''}">
+      <div class="el-label">
+        <span class="el-tag">${ie.isBgImage ? 'background' : 'image'}</span>
+        ${changed ? '<span class="el-changed">Modified</span>' : ''}
+      </div>
+      <div class="img-preview">
+        <img src="${imgSrc}" alt="${escapeAttr(ie.alt)}" onerror="this.style.display='none'">
+        <div class="img-info">${escapeHtml(ie.src.split('/').pop())}</div>
+        <button class="swap-btn" onclick="startImageSwap('${section.id}','${ie.id}')">Swap</button>
+      </div>
+      <div style="margin-top:6px;">
+        <input type="text" data-section="${section.id}" data-element="${ie.id}" data-type="alt"
+          oninput="handleAltEdit(this)" value="${escapeAttr(ie.alt)}" placeholder="Alt text">
+      </div>
+      ${changed ? `<button class="reset-btn" onclick="resetElement('${section.id}','${ie.id}','image')">Reset</button>` : ''}
+    </div>`;
+  });
+
+  col.innerHTML = html;
+}
+
+function resolveImageUrl(src) {
+  if (src.startsWith('http')) return src;
+  // Resolve relative to GitHub Pages
+  return `https://${state.owner}.github.io/${state.repo}/${src.replace(/^\.\//, '')}`;
+}
+
+// ==========================================
+// EVENT HANDLERS
+// ==========================================
+function handleTextEdit(el) {
+  const sectionId = el.dataset.section;
+  const elementId = el.dataset.element;
+  const value = el.value;
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const te = section.textElements.find(t => t.id === elementId);
+  if (te) te.content = value;
+  renderSections();
+  updateChangeCount();
+}
+
+function handleAltEdit(el) {
+  const sectionId = el.dataset.section;
+  const elementId = el.dataset.element;
+  const value = el.value;
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (ie) ie.alt = value;
+  renderSections();
+  updateChangeCount();
+}
+
+function startImageSwap(sectionId, elementId) {
+  state.pendingImageSwap = { sectionId, elementId };
+  document.getElementById('fileChooser').click();
+}
+
+document.getElementById('fileChooser').addEventListener('change', function(e) {
+  if (!e.target.files.length || !state.pendingImageSwap) return;
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const base64 = ev.target.result.split(',')[1];
+    const { sectionId, elementId } = state.pendingImageSwap;
+    const section = state.sections.find(s => s.id === sectionId);
+    if (!section) return;
+    const ie = section.imageElements.find(i => i.id === elementId);
+    if (ie) {
+      ie.newFileBase64 = base64;
+      ie.newFileName = file.name.toLowerCase().replace(/\s+/g, '-');
+      ie.src = `assets/${ie.newFileName}`;
+    }
+    state.pendingImageSwap = null;
+    renderEditor();
+    renderSections();
+    updateChangeCount();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+function resetElement(sectionId, elementId, type) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  if (type === 'text') {
+    const te = section.textElements.find(t => t.id === elementId);
+    if (te) te.content = te.originalContent;
+  } else {
+    const ie = section.imageElements.find(i => i.id === elementId);
+    if (ie) {
+      ie.src = ie.originalSrc;
+      ie.alt = ie.originalAlt;
+      ie.newFileBase64 = null;
+      ie.newFileName = null;
+    }
+  }
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function updateChangeCount() {
+  let total = 0;
+  state.sections.forEach(s => { total += countSectionChanges(s); });
+  const el = document.getElementById('changeCount');
+  const btn = document.getElementById('deployBtn');
+  if (total === 0) {
+    el.innerHTML = 'No changes';
+    btn.disabled = true;
+    btn.className = 'deploy-btn';
+  } else {
+    el.innerHTML = `<strong>${total}</strong> pending change${total !== 1 ? 's' : ''}`;
+    btn.disabled = false;
+    btn.className = 'deploy-btn';
+  }
+}
+
+// ==========================================
+// DEPLOY
+// ==========================================
+async function deploySite() {
+  const btn = document.getElementById('deployBtn');
+  btn.disabled = true;
+  btn.textContent = 'Deploying...';
+
+  showLoading('Applying changes...');
+
+  try {
+    // Apply text changes to HTML
+    let html = state.originalHtml;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    state.sections.forEach(section => {
+      section.textElements.forEach(te => {
+        if (te.content === te.originalContent) return;
+        try {
+          const el = doc.querySelector(te.selector);
+          if (el) {
+            // If inner HTML was just text, replace textContent
+            if (el.children.length === 0) {
+              el.textContent = te.content;
+            } else {
+              // Try to replace the text portion
+              el.textContent = te.content;
+            }
+          }
+        } catch (e) {
+          console.warn('Selector failed:', te.selector, e);
+        }
+      });
+
+      section.imageElements.forEach(ie => {
+        if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
+        try {
+          const el = doc.querySelector(ie.selector);
+          if (el) {
+            if (ie.isBgImage) {
+              const style = el.getAttribute('style') || '';
+              el.setAttribute('style', style.replace(/url\(['"]?[^'")\s]+['"]?\)/, `url('${ie.src}')`));
+            } else {
+              if (ie.src !== ie.originalSrc) el.setAttribute('src', ie.src);
+              if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
+            }
+          }
+        } catch (e) {
+          console.warn('Selector failed:', ie.selector, e);
+        }
+      });
+    });
+
+    // Serialize back to HTML string
+    // Use the doctype + full html to preserve original structure
+    const serializer = new XMLSerializer();
+    let newHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+
+    // Push HTML file
+    showLoading('Pushing HTML to GitHub...');
+    const result = await pushFile(state.filePath, newHtml, 'Update site via Site Editor', state.fileSha);
+    state.fileSha = result.content.sha;
+    state.originalHtml = newHtml;
+
+    // Push any new image files
+    const newImages = [];
+    state.sections.forEach(s => {
+      s.imageElements.forEach(ie => {
+        if (ie.newFileBase64) {
+          newImages.push(ie);
+        }
+      });
+    });
+
+    for (let i = 0; i < newImages.length; i++) {
+      const ie = newImages[i];
+      showLoading(`Uploading image ${i + 1}/${newImages.length}...`);
+      await pushBinaryFile(`assets/${ie.newFileName}`, ie.newFileBase64, `Add image: ${ie.newFileName}`);
+    }
+
+    // Reset change tracking
+    state.sections.forEach(s => {
+      s.textElements.forEach(te => {
+        te.originalContent = te.content;
+        te.originalInnerHTML = te.content;
+      });
+      s.imageElements.forEach(ie => {
+        ie.originalSrc = ie.src;
+        ie.originalAlt = ie.alt;
+        ie.newFileBase64 = null;
+        ie.newFileName = null;
+      });
+    });
+
+    btn.textContent = 'Deployed!';
+    btn.className = 'deploy-btn success';
+    setTimeout(() => {
+      btn.textContent = 'Deploy Changes';
+      btn.className = 'deploy-btn';
+      updateChangeCount();
+    }, 3000);
+
+    // Refresh preview
+    document.getElementById('previewFrame').src = document.getElementById('previewFrame').src;
+
+    renderSections();
+    renderEditor();
+
+  } catch (err) {
+    btn.textContent = 'Deploy Failed';
+    btn.className = 'deploy-btn error';
+    alert('Deploy failed: ' + err.message);
+    console.error(err);
+    setTimeout(() => {
+      btn.textContent = 'Deploy Changes';
+      btn.className = 'deploy-btn';
+      btn.disabled = false;
+    }, 3000);
+  } finally {
+    hideLoading();
+  }
+}
+
+function backToSetup() {
+  show('setup');
+}
+
+// ==========================================
+// HELPERS
+// ==========================================
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function escapeAttr(str) {
+  return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
