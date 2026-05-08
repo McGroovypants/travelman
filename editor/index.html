@@ -430,26 +430,16 @@ body {
 <!-- SETUP / CONFIG -->
 <div id="setup">
   <div class="setup-box">
-    <h2>Connect to GitHub</h2>
+    <h2>First-Time Setup</h2>
+    <p style="color: var(--text-dim); margin-bottom: 20px; font-size: 14px; line-height: 1.5;">
+      Paste your GitHub access token below. You only need to do this once — it's saved securely in your browser.
+    </p>
     <div class="field">
-      <label>GitHub Personal Access Token</label>
+      <label>Access Token</label>
       <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxx">
-      <div class="hint">Needs repo scope. Stored in your browser only.</div>
+      <div class="hint">Create one at <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--gold);">github.com/settings/tokens</a> with <strong>repo</strong> scope.</div>
     </div>
-    <div class="field">
-      <label>Repository Owner</label>
-      <input type="text" id="ownerInput" value="McGroovypants">
-    </div>
-    <div class="field">
-      <label>Repository Name</label>
-      <input type="text" id="repoInput" value="travelman">
-    </div>
-    <div class="field">
-      <label>HTML File Path</label>
-      <input type="text" id="fileInput" value="index.html">
-      <div class="hint">Path within the repo (e.g. index.html)</div>
-    </div>
-    <button class="setup-btn" id="loadBtn" onclick="loadSite()">Load Site</button>
+    <button class="setup-btn" id="loadBtn" onclick="loadSite()">Connect &amp; Load Site</button>
   </div>
 </div>
 
@@ -480,7 +470,7 @@ body {
     </div>
   </div>
   <div class="deploy-bar">
-    <button class="back-btn" onclick="backToSetup()">Settings</button>
+    <button class="back-btn" onclick="backToSetup()">Token Settings</button>
     <span class="change-count" id="changeCount">No changes</span>
     <button class="deploy-btn" id="deployBtn" onclick="deploySite()" disabled>Deploy Changes</button>
   </div>
@@ -550,18 +540,14 @@ async function checkCode() {
   const input = document.getElementById('codeInput');
   const hash = await sha256(input.value);
   if (hash === ACCESS_CODE_HASH) {
-    // Check for saved PAT
+    // Check for saved PAT — auto-load if found
     const saved = localStorage.getItem('site-editor-pat');
     if (saved) {
       document.getElementById('patInput').value = saved;
+      loadSite(); // Skip setup, go straight to editor
+    } else {
+      show('setup');
     }
-    const savedOwner = localStorage.getItem('site-editor-owner');
-    const savedRepo = localStorage.getItem('site-editor-repo');
-    const savedFile = localStorage.getItem('site-editor-file');
-    if (savedOwner) document.getElementById('ownerInput').value = savedOwner;
-    if (savedRepo) document.getElementById('repoInput').value = savedRepo;
-    if (savedFile) document.getElementById('fileInput').value = savedFile;
-    show('setup');
   } else {
     input.classList.add('error');
     setTimeout(() => input.classList.remove('error'), 400);
@@ -757,12 +743,13 @@ function buildSelector(el) {
 // ==========================================
 async function loadSite() {
   const pat = document.getElementById('patInput').value.trim();
-  const owner = document.getElementById('ownerInput').value.trim();
-  const repo = document.getElementById('repoInput').value.trim();
-  const filePath = document.getElementById('fileInput').value.trim();
+  // Hardcoded config — this editor is built for the Travelman site
+  const owner = 'McGroovypants';
+  const repo = 'travelman';
+  const filePath = 'index.html';
 
-  if (!pat || !owner || !repo || !filePath) {
-    alert('Please fill in all fields');
+  if (!pat) {
+    alert('Please enter your access token');
     return;
   }
 
@@ -771,11 +758,8 @@ async function loadSite() {
   state.repo = repo;
   state.filePath = filePath;
 
-  // Save to localStorage
+  // Save token to localStorage
   localStorage.setItem('site-editor-pat', pat);
-  localStorage.setItem('site-editor-owner', owner);
-  localStorage.setItem('site-editor-repo', repo);
-  localStorage.setItem('site-editor-file', filePath);
 
   showLoading('Fetching site from GitHub...');
 
