@@ -754,7 +754,7 @@ async function loadSiteAuto() {
   showLoading('Fetching site from GitHub...');
 
   try {
-    const { content, sha } = await fetchFile(filePath);
+    const { content, sha } = await fetchFile(state.filePath);
     state.originalHtml = content;
     state.fileSha = sha;
 
@@ -763,10 +763,10 @@ async function loadSiteAuto() {
     state.selectedSectionId = state.sections.length > 0 ? state.sections[0].id : null;
 
     // Setup preview
-    const siteUrl = `https://${owner}.github.io/${repo}/`;
+    const siteUrl = `https://${state.owner}.github.io/${state.repo}/`;
     document.getElementById('previewLink').href = siteUrl;
     document.getElementById('previewFrame').src = siteUrl;
-    document.getElementById('siteLabel').textContent = `${owner}/${repo}`;
+    document.getElementById('siteLabel').textContent = `${state.owner}/${state.repo}`;
 
     renderSections();
     renderEditor();
