@@ -753,7 +753,7 @@ function buildSelector(el) {
   while (current && current !== document.body && current.nodeType === 1) {
     let selector = current.tagName.toLowerCase();
     if (current.id) {
-      path.unshift(`#${CSS.escape(current.id)} > ${selector}`);
+      path.unshift(`#${CSS.escape(current.id)}`);
       break;
     }
     if (current.parentElement) {
