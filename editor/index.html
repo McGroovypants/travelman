@@ -177,6 +177,18 @@ body {
   background: var(--surface);
 }
 .col-header h3 { font-size: 13px; font-weight: 600; }
+#refreshPreview {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 7px;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+}
+#refreshPreview:hover { background: var(--accent); color: #fff; }
 .col-header a {
   color: var(--accent);
   font-size: 12px;
@@ -464,6 +476,7 @@ body.col-resizing iframe { pointer-events: none; }
     <div class="preview-col">
       <div class="col-header">
         <h3>Live Preview</h3>
+        <button id="refreshPreview" onclick="(function(){ var pf=document.getElementById('previewFrame'); var b=pf.src.split('?')[0]; pf.src=b+'?t='+Date.now(); })()" title="Refresh preview">&#8635;</button>
         <a id="previewLink" href="#" target="_blank">Open site &#8599;</a>
       </div>
       <iframe id="previewFrame" title="Live site preview"></iframe>
