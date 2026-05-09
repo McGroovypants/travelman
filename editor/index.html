@@ -1109,8 +1109,10 @@ async function deploySite() {
       updateChangeCount();
     }, 3000);
 
-    // Refresh preview
-    document.getElementById('previewFrame').src = document.getElementById('previewFrame').src;
+    // Refresh preview with cache bust
+    const pf = document.getElementById('previewFrame');
+    const base = pf.src.split('?')[0];
+    pf.src = base + '?t=' + Date.now();
 
     renderSections();
     renderEditor();
