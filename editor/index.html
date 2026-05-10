@@ -475,8 +475,8 @@ body.col-resizing iframe { pointer-events: none; }
   <div class="editor-body">
     <div class="preview-col">
       <div class="col-header">
-        <h3>Live Preview</h3>
-        <button id="refreshPreview" onclick="(function(){ var pf=document.getElementById('previewFrame'); var b=pf.src.split('?')[0]; pf.src=b+'?t='+Date.now(); })()" title="Refresh preview">&#8635;</button>
+        <h3>Preview</h3>
+        <button id="refreshPreview" onclick="loadBlobPreview(state.originalHtml)" title="Refresh preview">&#8635;</button>
         <a id="previewLink" href="#" target="_blank">Open site &#8599;</a>
       </div>
       <iframe id="previewFrame" title="Live site preview"></iframe>
@@ -594,6 +594,25 @@ async function checkCode() {
     setTimeout(() => input.classList.remove('error'), 400);
     input.value = '';
   }
+}
+
+// ==========================================
+// BLOB PREVIEW — instant local rendering
+// ==========================================
+let currentBlobUrl = null;
+
+function loadBlobPreview(html) {
+  if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+
+  const baseUrl = `https://raw.githubusercontent.com/${state.owner}/${state.repo}/main/`;
+  let processed = html;
+  processed = processed.replace(/(src=["'])(?:\.\/)?(assets\/)/gi, `$1${baseUrl}$2`);
+  processed = processed.replace(/(url\(["']?)(?:\.\/)?(assets\/)/gi, `$1${baseUrl}$2`);
+  processed = processed.replace(/(href=["'])(?:\.\/)?(assets\/)/gi, `$1${baseUrl}$2`);
+
+  const blob = new Blob([processed], { type: 'text/html' });
+  currentBlobUrl = URL.createObjectURL(blob);
+  document.getElementById('previewFrame').src = currentBlobUrl;
 }
 
 // ==========================================
@@ -805,7 +824,7 @@ async function loadSiteAuto() {
     // Setup preview
     const siteUrl = `https://${state.owner}.github.io/${state.repo}/`;
     document.getElementById('previewLink').href = siteUrl;
-    document.getElementById('previewFrame').src = siteUrl;
+    loadBlobPreview(content);
     document.getElementById('siteLabel').textContent = `${state.owner}/${state.repo}`;
 
     renderSections();
@@ -1122,10 +1141,8 @@ async function deploySite() {
       updateChangeCount();
     }, 3000);
 
-    // Refresh preview with cache bust
-    const pf = document.getElementById('previewFrame');
-    const base = pf.src.split('?')[0];
-    pf.src = base + '?t=' + Date.now();
+    // Refresh preview instantly from new HTML
+    loadBlobPreview(newHtml);
 
     renderSections();
     renderEditor();
