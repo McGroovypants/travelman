@@ -177,18 +177,7 @@ body {
   background: var(--surface);
 }
 .col-header h3 { font-size: 13px; font-weight: 600; }
-#refreshPreview {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--accent);
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 4px;
-  padding: 2px 7px;
-  line-height: 1;
-  transition: background 0.2s, color 0.2s;
-}
-#refreshPreview:hover { background: var(--accent); color: #fff; }
+
 .col-header a {
   color: var(--accent);
   font-size: 12px;
@@ -401,6 +390,18 @@ body.col-resizing iframe { pointer-events: none; }
   color: var(--text-dim);
   word-break: break-all;
 }
+.delete-btn {
+  background: none;
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+.delete-btn:hover { background: #e74c3c; color: #fff; }
 .swap-btn {
   padding: 6px 14px;
   background: var(--surface2);
@@ -522,7 +523,6 @@ body.col-resizing iframe { pointer-events: none; }
     <div class="preview-col">
       <div class="col-header">
         <h3>Preview</h3>
-        <button id="refreshPreview" onclick="loadBlobPreview(state.originalHtml)" title="Refresh preview">&#8635;</button>
         <a id="previewLink" href="#" target="_blank">Open site &#8599;</a>
       </div>
       <iframe id="previewFrame" title="Live site preview"></iframe>
@@ -930,7 +930,7 @@ function countSectionChanges(section) {
     if (te.content !== te.originalContent) count++;
   });
   section.imageElements.forEach(ie => {
-    if (ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
+    if (ie.deleted || ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
   });
   return count;
 }
@@ -975,22 +975,36 @@ function renderEditor() {
       `data:image/jpeg;base64,${ie.newFileBase64}` :
       resolveImageUrl(ie.src);
 
-    html += `<div class="element-group${changed ? ' changed' : ''}">
-      <div class="el-label">
-        <span class="el-tag">${ie.isBgImage ? 'background' : 'image'}</span>
-        ${changed ? '<span class="el-changed">Modified</span>' : ''}
-      </div>
-      <div class="img-preview">
-        <img src="${imgSrc}" alt="${escapeAttr(ie.alt)}" onerror="this.style.display='none'">
-        <div class="img-info">${escapeHtml(ie.src.split('/').pop())}</div>
-        <button class="swap-btn" onclick="startImageSwap('${section.id}','${ie.id}')">Swap</button>
-      </div>
-      <div style="margin-top:6px;">
-        <input type="text" data-section="${section.id}" data-element="${ie.id}" data-type="alt"
-          oninput="handleAltEdit(this)" value="${escapeAttr(ie.alt)}" placeholder="Alt text">
-      </div>
-      ${changed ? `<button class="reset-btn" onclick="resetElement('${section.id}','${ie.id}','image')">Reset</button>` : ''}
-    </div>`;
+    if (ie.deleted) {
+      html += `<div class="element-group changed">
+        <div class="el-label">
+          <span class="el-tag">${ie.isBgImage ? 'background' : 'image'}</span>
+          <span class="el-changed" style="color:#e74c3c;">Deleted</span>
+        </div>
+        <div style="padding:8px 0;color:#888;font-size:12px;">
+          <em>${escapeHtml(ie.originalSrc.split('/').pop())}</em> — will be removed on deploy
+          <button class="reset-btn" onclick="restoreImage('${section.id}','${ie.id}')">Undo Delete</button>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="element-group${changed ? ' changed' : ''}">
+        <div class="el-label">
+          <span class="el-tag">${ie.isBgImage ? 'background' : 'image'}</span>
+          ${changed ? '<span class="el-changed">Modified</span>' : ''}
+        </div>
+        <div class="img-preview">
+          <img src="${imgSrc}" alt="${escapeAttr(ie.alt)}" onerror="this.style.display='none'">
+          <div class="img-info">${escapeHtml(ie.src.split('/').pop())}</div>
+          <button class="swap-btn" onclick="startImageSwap('${section.id}','${ie.id}')">Swap</button>
+          <button class="delete-btn" onclick="deleteImage('${section.id}','${ie.id}')">Delete</button>
+        </div>
+        <div style="margin-top:6px;">
+          <input type="text" data-section="${section.id}" data-element="${ie.id}" data-type="alt"
+            oninput="handleAltEdit(this)" value="${escapeAttr(ie.alt)}" placeholder="Alt text">
+        </div>
+        ${changed ? `<button class="reset-btn" onclick="resetElement('${section.id}','${ie.id}','image')">Reset</button>` : ''}
+      </div>`;
+    }
   });
 
   col.innerHTML = html;
@@ -1012,7 +1026,10 @@ function handleTextEdit(el) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   const te = section.textElements.find(t => t.id === elementId);
-  if (te) te.content = value;
+  if (te) {
+    te.content = value;
+    updatePreviewInstant(te.selector, 'text', value);
+  }
   renderSections();
   updateChangeCount();
 }
@@ -1024,9 +1041,63 @@ function handleAltEdit(el) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   const ie = section.imageElements.find(i => i.id === elementId);
-  if (ie) ie.alt = value;
+  if (ie) {
+    ie.alt = value;
+    updatePreviewInstant(ie.selector, 'alt', value);
+  }
   renderSections();
   updateChangeCount();
+}
+
+function deleteImage(sectionId, elementId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (ie) {
+    ie.deleted = true;
+    updatePreviewInstant(ie.selector, 'delete');
+  }
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function restoreImage(sectionId, elementId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (ie) {
+    ie.deleted = false;
+    updatePreviewInstant(ie.selector, 'restore');
+  }
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+// ==========================================
+// INSTANT PREVIEW - update iframe DOM directly
+// ==========================================
+function updatePreviewInstant(selector, type, value) {
+  try {
+    const iframe = document.getElementById('previewFrame');
+    const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+    if (!iDoc) return;
+    const el = iDoc.querySelector(selector);
+    if (!el) return;
+
+    if (type === 'text') {
+      el.textContent = value;
+    } else if (type === 'alt') {
+      el.setAttribute('alt', value);
+    } else if (type === 'delete') {
+      el.style.display = 'none';
+    } else if (type === 'restore') {
+      el.style.display = '';
+    }
+  } catch (e) {
+    // Cross-origin or iframe not loaded — silently skip
+  }
 }
 
 function startImageSwap(sectionId, elementId) {
@@ -1122,21 +1193,21 @@ function applyChanges() {
       });
 
       section.imageElements.forEach(ie => {
-        if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
         try {
           const el = doc.querySelector(ie.selector);
-          if (el) {
-            if (ie.isBgImage) {
-              const style = el.getAttribute('style') || '';
+          if (!el) return;
+          if (ie.deleted) { el.remove(); return; }
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
+          if (ie.isBgImage) {
+            const style = el.getAttribute('style') || '';
+            const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
+            el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${previewSrc}')`));
+          } else {
+            if (ie.src !== ie.originalSrc) {
               const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
-              el.setAttribute('style', style.replace(/url\(['"']?[^'"\)\s]+['"']?\)/, `url('${previewSrc}')`));
-            } else {
-              if (ie.src !== ie.originalSrc) {
-                const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
-                el.setAttribute('src', previewSrc);
-              }
-              if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
+              el.setAttribute('src', previewSrc);
             }
+            if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
           }
         } catch (e) { console.warn('Selector failed:', ie.selector, e); }
       });
@@ -1197,17 +1268,17 @@ async function deploySite() {
       });
 
       section.imageElements.forEach(ie => {
-        if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
         try {
           const el = doc.querySelector(ie.selector);
-          if (el) {
-            if (ie.isBgImage) {
-              const style = el.getAttribute('style') || '';
-              el.setAttribute('style', style.replace(/url\(['"]?[^'")\s]+['"]?\)/, `url('${ie.src}')`));
-            } else {
-              if (ie.src !== ie.originalSrc) el.setAttribute('src', ie.src);
-              if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
-            }
+          if (!el) return;
+          if (ie.deleted) { el.remove(); return; }
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
+          if (ie.isBgImage) {
+            const style = el.getAttribute('style') || '';
+            el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${ie.src}')`));
+          } else {
+            if (ie.src !== ie.originalSrc) el.setAttribute('src', ie.src);
+            if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
           }
         } catch (e) {
           console.warn('Selector failed:', ie.selector, e);
@@ -1253,6 +1324,8 @@ async function deploySite() {
         te.originalContent = te.content;
         te.originalInnerHTML = te.content;
       });
+      // Remove deleted images from state
+      s.imageElements = s.imageElements.filter(ie => !ie.deleted);
       s.imageElements.forEach(ie => {
         ie.originalSrc = ie.src;
         ie.originalAlt = ie.alt;
