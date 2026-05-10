@@ -605,10 +605,14 @@ function loadBlobPreview(html) {
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
 
   const baseUrl = `https://raw.githubusercontent.com/${state.owner}/${state.repo}/main/`;
+
+  // Inject <base> tag so ALL relative URLs resolve to the GitHub raw content
   let processed = html;
-  processed = processed.replace(/(src=["'])(?:\.\/)?(assets\/)/gi, `$1${baseUrl}$2`);
-  processed = processed.replace(/(url\(["']?)(?:\.\/)?(assets\/)/gi, `$1${baseUrl}$2`);
-  processed = processed.replace(/(href=["'])(?:\.\/)?(assets\/)/gi, `$1${baseUrl}$2`);
+  if (processed.includes('<head>')) {
+    processed = processed.replace('<head>', `<head><base href="${baseUrl}">`);
+  } else if (processed.includes('<HEAD>')) {
+    processed = processed.replace('<HEAD>', `<HEAD><base href="${baseUrl}">`);
+  }
 
   const blob = new Blob([processed], { type: 'text/html' });
   currentBlobUrl = URL.createObjectURL(blob);
