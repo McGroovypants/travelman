@@ -604,7 +604,7 @@ let currentBlobUrl = null;
 function loadBlobPreview(html) {
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
 
-  const baseUrl = `https://raw.githubusercontent.com/${state.owner}/${state.repo}/main/`;
+  const baseUrl = `https://${state.owner}.github.io/${state.repo}/`;
 
   // Inject <base> tag so ALL relative URLs resolve to the GitHub raw content
   let processed = html;
