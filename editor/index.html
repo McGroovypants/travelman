@@ -270,6 +270,38 @@ body {
 body.col-resizing { cursor: col-resize !important; user-select: none !important; }
 body.col-resizing iframe { pointer-events: none; }
 
+/* Toast notification */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  pointer-events: none;
+}
+.toast {
+  background: var(--surface2);
+  border: 1px solid var(--success);
+  color: var(--text);
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: auto;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.fade-out {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 /* Editor panel */
 .editor-col {
   flex: 1;
@@ -519,6 +551,11 @@ body.col-resizing iframe { pointer-events: none; }
 <div id="loadingOverlay" style="display:none" class="loading-overlay">
   <div class="spinner"></div>
   <div class="loading-text" id="loadingText">Loading...</div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div class="toast-container" id="toastContainer">
+  <div class="toast" id="toast"></div>
 </div>
 
 <input type="file" id="fileChooser" accept="image/*" style="display:none">
@@ -1178,6 +1215,11 @@ async function deploySite() {
       });
     });
 
+    // Inject deploy marker for live-check polling
+    const deployMarker = `deploy-${Date.now()}`;
+    const markerComment = doc.createComment(deployMarker);
+    doc.head.appendChild(markerComment);
+
     // Serialize back to HTML string
     // Use the doctype + full html to preserve original structure
     const serializer = new XMLSerializer();
@@ -1227,6 +1269,9 @@ async function deploySite() {
       updateChangeCount();
     }, 3000);
 
+    // Start polling for live status
+    checkLiveStatus(deployMarker);
+
     // Refresh preview instantly from new HTML
     loadBlobPreview(newHtml);
 
@@ -1246,6 +1291,43 @@ async function deploySite() {
   } finally {
     hideLoading();
   }
+}
+
+function showToast(message, duration = 5000) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show';
+  setTimeout(() => {
+    toast.className = 'toast fade-out';
+    setTimeout(() => { toast.className = 'toast'; }, 300);
+  }, duration);
+}
+
+async function checkLiveStatus(deployMarker) {
+  const liveUrl = `https://${state.owner}.github.io/${state.repo}/`;
+  const maxAttempts = 20; // ~60 seconds
+  let attempt = 0;
+
+  const poll = async () => {
+    attempt++;
+    try {
+      const resp = await fetch(liveUrl + '?_cb=' + Date.now(), { cache: 'no-store' });
+      const text = await resp.text();
+      if (text.includes(deployMarker)) {
+        showToast('✓ Changes are live!', 5000);
+        return;
+      }
+    } catch (e) {
+      // Ignore fetch errors, keep polling
+    }
+    if (attempt < maxAttempts) {
+      setTimeout(poll, 3000);
+    }
+    // Silent timeout — no message needed if it takes too long
+  };
+
+  // Start polling after a short initial delay (Pages needs time to build)
+  setTimeout(poll, 5000);
 }
 
 function backToSetup() {
