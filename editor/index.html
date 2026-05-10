@@ -409,6 +409,20 @@ body.col-resizing iframe { pointer-events: none; }
 .deploy-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .deploy-btn.success { background: var(--success); }
 .deploy-btn.error { background: var(--danger); }
+.apply-btn {
+  padding: 8px 24px;
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.apply-btn:hover { background: rgba(212, 168, 83, 0.15); }
+.apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.apply-btn.success { border-color: var(--success); color: var(--success); }
 .back-btn {
   padding: 8px 16px;
   background: transparent;
@@ -496,6 +510,7 @@ body.col-resizing iframe { pointer-events: none; }
   <div class="deploy-bar">
     <button class="back-btn" onclick="location.reload()">Log Out</button>
     <span class="change-count" id="changeCount">No changes</span>
+    <button class="apply-btn" id="applyBtn" onclick="applyChanges()" disabled>Apply</button>
     <button class="deploy-btn" id="deployBtn" onclick="deploySite()" disabled>Deploy Changes</button>
   </div>
 </div>
@@ -1031,14 +1046,81 @@ function updateChangeCount() {
   state.sections.forEach(s => { total += countSectionChanges(s); });
   const el = document.getElementById('changeCount');
   const btn = document.getElementById('deployBtn');
+  const applyBtn = document.getElementById('applyBtn');
   if (total === 0) {
     el.innerHTML = 'No changes';
     btn.disabled = true;
     btn.className = 'deploy-btn';
+    applyBtn.disabled = true;
+    applyBtn.className = 'apply-btn';
   } else {
     el.innerHTML = `<strong>${total}</strong> pending change${total !== 1 ? 's' : ''}`;
     btn.disabled = false;
     btn.className = 'deploy-btn';
+    applyBtn.disabled = false;
+    applyBtn.className = 'apply-btn';
+  }
+}
+
+// ==========================================
+// APPLY (preview only, no deploy)
+// ==========================================
+function applyChanges() {
+  const btn = document.getElementById('applyBtn');
+  btn.disabled = true;
+  btn.textContent = 'Applying...';
+
+  try {
+    let html = state.originalHtml;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    state.sections.forEach(section => {
+      section.textElements.forEach(te => {
+        if (te.content === te.originalContent) return;
+        try {
+          const el = doc.querySelector(te.selector);
+          if (el) el.textContent = te.content;
+        } catch (e) { console.warn('Selector failed:', te.selector, e); }
+      });
+
+      section.imageElements.forEach(ie => {
+        if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
+        try {
+          const el = doc.querySelector(ie.selector);
+          if (el) {
+            if (ie.isBgImage) {
+              const style = el.getAttribute('style') || '';
+              const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
+              el.setAttribute('style', style.replace(/url\(['"']?[^'"\)\s]+['"']?\)/, `url('${previewSrc}')`));
+            } else {
+              if (ie.src !== ie.originalSrc) {
+                const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
+                el.setAttribute('src', previewSrc);
+              }
+              if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
+            }
+          }
+        } catch (e) { console.warn('Selector failed:', ie.selector, e); }
+      });
+    });
+
+    const previewHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    loadBlobPreview(previewHtml);
+
+    btn.textContent = 'Applied!';
+    btn.className = 'apply-btn success';
+    setTimeout(() => {
+      btn.textContent = 'Apply';
+      btn.className = 'apply-btn';
+      updateChangeCount();
+    }, 2000);
+
+  } catch (err) {
+    console.error('Apply failed:', err);
+    btn.textContent = 'Apply';
+    btn.className = 'apply-btn';
+    updateChangeCount();
   }
 }
 
