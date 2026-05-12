@@ -902,6 +902,19 @@ document.getElementById('siteUrlInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('codeInput').focus();
 });
 
+// Auto-detect site URL from current page location
+(function() {
+  const loc = window.location;
+  if (loc.hostname.endsWith('.github.io')) {
+    const parts = loc.pathname.split('/').filter(Boolean);
+    // If we're at /reponame/editor/, the site URL is /reponame/
+    if (parts.length >= 1) {
+      const siteUrl = `${loc.protocol}//${loc.hostname}/${parts[0]}/`;
+      document.getElementById('siteUrlInput').value = siteUrl;
+    }
+  }
+})();
+
 async function checkCode() {
   const urlInput = document.getElementById('siteUrlInput');
   const codeInput = document.getElementById('codeInput');
