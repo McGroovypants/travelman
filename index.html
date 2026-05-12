@@ -1,9 +1,10 @@
-<!DOCTYPE html>
-<html lang="en"><head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TRAVELMAN – by Jerry Bridge</title>
-  <link href="https://cdn.jsdelivr.net/npm/inter-ui@4.1.0/inter.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/inter-ui@4.1.0/inter.min.css" rel="stylesheet" />
   <style>
     :root {
       --navy: #0a1628;
@@ -218,6 +219,83 @@
     .award-item .award-label { font-size: 0.75rem; color: var(--warm-gray); letter-spacing: 0.05em; }
 
     /* === CTA === */
+    /* Book CTA */
+    .book-cta {
+      padding: 6rem 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+    .book-cta-cover {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .book-cta-cover img {
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .book-cta-action {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(201,148,74,0.08) 0%, rgba(201,148,74,0.02) 100%);
+      border: 1px solid rgba(201,148,74,0.2);
+      border-radius: 0 8px 8px 0;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    .book-cta-action h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+    .book-cta-action p {
+      color: var(--text-muted);
+      max-width: 320px;
+      margin: 0 auto 2rem;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+    .book-cta-action .buy-btn {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--navy);
+      padding: 1rem 2.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+      transition: all 0.3s ease;
+    }
+    .book-cta-action .buy-btn:hover {
+      background: var(--gold-light);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(201,148,74,0.3);
+    }
+    @media (max-width: 768px) {
+      .book-cta {
+        flex-direction: column;
+        padding: 4rem 1.5rem;
+        gap: 2rem;
+      }
+      .book-cta-action {
+        border-radius: 0 0 8px 8px;
+        padding: 2.5rem 1.5rem;
+      }
+      .book-cta-action h2 { font-size: 2rem; }
+    }
+
     .cta-section {
       text-align: center; padding: 8rem 2rem;
       background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
@@ -278,7 +356,7 @@
     }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
   </style>
-<!--deploy-1778386267476--><!--deploy-1778387038029--><!--deploy-1778387359831--><!--deploy-1778387488378--><!--deploy-1778387642957--><!--deploy-1778388301341--><!--deploy-1778389534525--><!--deploy-1778389898135--><!--deploy-1778390828132--><!--deploy-1778391023886--><!--deploy-1778391483505--><!--deploy-1778391670640--><!--deploy-1778461830305--><!--deploy-1778462272018--><!--deploy-1778463520947--><!--deploy-1778463774750--><!--deploy-1778463911707--><!--deploy-1778464221565--><!--deploy-1778543828923--><!--deploy-1778543974290--><!--deploy-1778544003675--><!--deploy-1778547576591--><!--deploy-1778547925090--></head>
+</head>
 <body>
 
   <!-- NAV -->
@@ -296,10 +374,14 @@
   <!-- HERO -->
   <section class="hero">
     <div class="hero-content">
-      <p class="hero-subtitle">A memoir of travel, business &amp; ambition</p>
+      <p class="hero-subtitle">A memoir of travel, business & ambition</p>
       <h1>TRAVELMAN</h1>
       <p class="hero-author">by Jerry Bridge</p>
-      <p class="hero-tagline">"I didn't set out to write a 'how to succeed in business story'. I set out to travel the world. But somewhere between sleeping in the back of a car in Australia and opening the doors to a small travel agency in Camden Town, travel became something else entirely."</p>
+      <p class="hero-tagline">
+        "I didn't set out to write a business story. I set out to see the world.
+        But somewhere between sleeping in the back of a car in Australia and opening
+        the doors to a tiny office in Camden Town, travel became something else entirely."
+      </p>
       <a href="#about" class="hero-cta">Discover the Story</a>
     </div>
     <div class="scroll-indicator">
@@ -311,13 +393,25 @@
   <!-- HOOK -->
   <section class="hook" id="about">
     <p class="section-label">The Book</p>
-    <h2 class="section-title">From Backpacker to Business Entrepreneur</h2>
+    <h2 class="section-title">From Backpacker to Business Builder</h2>
     <div class="hook-text">
-      <p>After three years at Trailfinders Travel Centre on Earls Court Road in the 1980s, and in a world untouched by online booking or budget airlines, Jerry Bridge set out to build a travel company from an old antique shop in Camden Town.</p>
+      <p>
+        In the 1980s, long before online booking and budget airlines, Jerry Bridge set out
+        to build a travel company from <em>a scrappy office in Camden Town</em>.
+      </p>
       <br>
-      <p>What followed was a fifteen-year journey through risk, relentless pressure, and the shifting world of long-haul travel — where survival depended on instinct, relationships, and nerve.</p>
+      <p>
+        What followed was a twenty-year journey through risk, relentless pressure, and the
+        shifting world of long-haul travel — where survival depended on <em>instinct,
+        relationships, and nerve</em>.
+      </p>
       <br>
-      <p>Travelman is the story of what it takes to build something from nothing — and what it costs along the way. It's a story about a father's legacy, a passion for travel that became an obsession, heartache, and the resolve behind building a life around other people’s journeys.</p>
+      <p>
+        Travelman is the story of what it takes to build something from nothing —
+        and what it costs along the way. It's a story about a father's legacy,
+        a passion for travel that became an obsession, and the
+        <em>grit behind every departure board and airline deal</em>.
+      </p>
     </div>
   </section>
 
@@ -327,44 +421,44 @@
     <div class="strip-scroll">
 
       <div class="strip-item">
-        <img src="assets/ant-termite-hill-western-australia.jpg" alt="Chris Reeves - King of the Termites">
+        <img src="./assets/london-travel.jpg" alt="London Travel Service 1970" />
         <div class="caption">London Travel Service, 1970/71</div>
       </div>
       <div class="strip-item">
-        <img src="assets/birla-mandir-temple-delhi-india.jpg" alt="Chris &amp; Jerry - India">
+        <img src="./assets/swiss-holidays.jpg" alt="Swiss Holidays" />
         <div class="caption">Swiss Holidays — the family legacy</div>
       </div>
       <div class="strip-item">
-        <img src="assets/driving-around-australia-holden-car.jpg" alt="Mr Roo in all its glory - Australia">
+        <img src="./assets/switzerland.jpg" alt="Switzerland brochure" />
         <div class="caption">Vintage Switzerland travel brochure</div>
       </div>
 
 
       <div class="strip-item">
-        <img src="assets/leaning-tower-of-pisa-italy-jerry-bridge.jpg" alt="Leaning Tower of Pisa - Italy">
+        <img src="./assets/majorca.jpg" alt="Majorca holidays" />
         <div class="caption">"Rent a Flat in Majorca" — 15 days from £34</div>
       </div>
 
 
       <div class="strip-item">
-        <img src="assets/pyramids-and-sphinx-egypt-photo.jpg" alt="The pyramids of Egypt">
+        <img src="./assets/jerry-david.jpg" alt="Jerry and David" />
         <div class="caption">Jerry &amp; David — partners in travel</div>
       </div>
       <div class="strip-item">
-        <img src="assets/jerry-1&amp;-richard-branson_opt.jpg" alt="Jerry &amp; Richard Branson - Virgin Atlantic">
+        <img src="./assets/launch-party.jpg" alt="Launch party" />
         <div class="caption">The launch party — celebrating a milestone</div>
       </div>
       <div class="strip-item">
-        <img src="./assets/early-team.jpg" alt="The early team">
+        <img src="./assets/early-team.jpg" alt="The early team" />
         <div class="caption">The early team — building the dream together</div>
       </div>
       <div class="strip-item">
-        <img src="assets/scan-together-for-collage_1a-crop.jpg" alt="Bridge the World 10 Year Anniversary Party">
+        <img src="./assets/piccadilly-award.jpg" alt="Piccadilly tourism award" />
         <div class="caption">Service to tourism — Piccadilly, 1973</div>
       </div>
 
     </div>
-  <div class="added-media" style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem;"><div style="flex:0 0 calc(33% - 0.5rem);max-width:calc(33% - 0.5rem);"><img src="assets/breakfast-with-a-landscape_opt.jpg" alt="Jerry &amp; Chris North Pakistan" style="width:100%;border-radius:8px;object-fit:cover;"></div></div></div>
+  </div>
 
   <!-- QUOTE -->
   <div class="quote-block">
@@ -378,16 +472,21 @@
   <!-- JOURNEY TIMELINE -->
   <section class="timeline" id="journey">
     <p class="section-label">The Journey</p>
-    <h2 class="section-title">Twenty Years of Risk, Travel &amp; Ambition</h2>
+    <h2 class="section-title">Twenty Years of Risk, Travel & Ambition</h2>
 
     <div class="timeline-item fade-in">
       <div class="tl-content">
         <p class="tl-year">The Beginning</p>
         <h3 class="tl-heading">A Father's Legacy</h3>
-        <p class="tl-text">Jerry's father – Walter Bridge – was an early pioneer of UK travel. His company, Swiss Travel Service, established in 1949, was among the first to offer travel to everyday people after the Second World War. He encouraged Jerry to buy his first backpack and go hitch-hiking at the age of sixteen.</p>
+        <p class="tl-text">
+          Jerry's father Walter was an early pioneer of UK travel. His company,
+          Swiss Travel Service, established in 1949, was among the first to offer
+          travel to everyday people after the Second World War. He encouraged
+          Jerry to buy his first backpack and go hitch-hiking at sixteen.
+        </p>
       </div>
       <div class="tl-image">
-        <img src="assets/dad-smiling_opt.jpg" alt="Walter Bridge">
+        <img src="./assets/walter-bridge.jpg" alt="Walter Bridge" />
       </div>
     </div>
 
@@ -395,10 +494,15 @@
       <div class="tl-content">
         <p class="tl-year">The Adventure</p>
         <h3 class="tl-heading">22 Months Overland to Australia</h3>
-        <p class="tl-text">After university, Jerry embarked on an incredible 22-month overland trip to and from Australia — without a mobile phone, a guidebook, or a credit card. His 8 months in Australia included a 24,000km road trip in a battered Holden HR Station Wagon. The kind of adventure that no longer exists.</p>
+        <p class="tl-text">
+          After university, Jerry embarked on an incredible 22-month overland trip
+          to Australia — without mobile phone, guidebook, or credit card. A 24,000 km
+          road trip in a beat-up Holden station wagon. The kind of adventure that
+          no longer exists.
+        </p>
       </div>
       <div class="tl-image">
-        <img src="./assets/travel-montage.jpg" alt="Travel adventure">
+        <img src="./assets/travel-montage.jpg" alt="Travel adventure" />
       </div>
     </div>
 
@@ -406,21 +510,31 @@
       <div class="tl-content">
         <p class="tl-year">Camden Town</p>
         <h3 class="tl-heading">Building Bridge the World</h3>
-        <p class="tl-text">From a modest office in Camden Town, Jerry built Bridge the World into a travel powerhouse — 150 staff, turning over £50 million, selling round the world itineraries and holidays to Australia, New Zealand, and Canada. All built on instinct, relationships, and nerve.</p>
+        <p class="tl-text">
+          From a scrappy office in Camden Town, Jerry built Bridge the World into a
+          travel powerhouse — 150 staff, turning over £50 million, selling flights
+          and holidays to Australia, New Zealand, and Round the World itineraries.
+          All built on instinct, relationships, and nerve.
+        </p>
       </div>
       <div class="tl-image">
-        <img src="./assets/first-booking-phone.jpg" alt="The first booking — where it all started">
+        <img src="./assets/first-booking-phone.jpg" alt="The first booking — where it all started" />
       </div>
     </div>
 
     <div class="timeline-item fade-in">
       <div class="tl-content">
         <p class="tl-year">Recognition</p>
-        <h3 class="tl-heading">Awards &amp; Industry Impact</h3>
-        <p class="tl-text">Entrepreneur of the Year semi-finalist (2000).  OzCARS Winner for Outstanding Contribution to the Australian Tourism Industry (2004). Multiple travel awards (1992 – 2001). The industry recognised what Jerry had built — and the travel trade would never be quite the same.</p>
+        <h3 class="tl-heading">Awards & Industry Impact</h3>
+        <p class="tl-text">
+          Entrepreneur of the Year. OzCARS Winner for Outstanding Contribution
+          to the Australian Tourism Industry. Multiple travel awards.
+          The industry recognised what Jerry had built — and the travel trade
+          would never be quite the same.
+        </p>
       </div>
       <div class="tl-image">
-        <img src="assets/entrepreneur-of-the-year-award-jerry-bridge.jpg" alt="Awards">
+        <img src="./assets/ozcars-winner.jpg" alt="Awards" />
       </div>
     </div>
   </section>
@@ -430,19 +544,19 @@
     <p class="section-label">Recognition</p>
     <div class="awards-grid">
       <div class="award-item">
-        <img src="assets/world-travel-with-bridge-jerry-bridge-tourism-australia-awards-night.jpg" alt="OzCars Winner - Outstanding Contribution to the Australian Tourism Industry">
+        <img src="./assets/award-gold.jpg" alt="Gold award" />
         <p class="award-label">Travel Industry Award</p>
       </div>
       <div class="award-item">
-        <img src="./assets/globe-award.jpg" alt="Award Winning Brochures">
+        <img src="./assets/globe-award.jpg" alt="Globe award" />
         <p class="award-label">The Observer Travel Award</p>
       </div>
       <div class="award-item">
-        <img src="./assets/aus-tourism-award.jpg" alt="Australian Tourism Award">
+        <img src="./assets/aus-tourism-award.jpg" alt="Australian Tourism Award" />
         <p class="award-label">Australian Tourism Award</p>
       </div>
       <div class="award-item">
-        <img src="assets/jerry-bridge-the-world-opt.jpg" alt="Building an Empire">
+        <img src="./assets/entrepreneur-award.jpg" alt="Entrepreneur award" />
         <p class="award-label">Entrepreneur of the Year 2000</p>
       </div>
     </div>
@@ -452,7 +566,7 @@
   <div class="author-section" id="author">
     <div class="author-inner">
       <div class="author-image">
-        <img src="assets/jerry-bridge-auckland-harbour.jpg" alt="Jerry Bridge - New Zealand">
+        <img src="./assets/jerry-headshot.jpg" alt="Jerry Bridge" />
       </div>
       <div class="author-bio">
         <p class="section-label">About the Author</p>
@@ -463,7 +577,12 @@
           long-haul travel agencies, his story is one of relentless ambition, risk-taking,
           and the kind of entrepreneurial grit you can't learn from a textbook.
         </p>
-        <p>Today, Jerry lives in Wellington, New Zealand, where he continues to work in the travel industry. Travelman is his first book — a memoir that's part business story, part travel adventure, and part love letter to a world that no longer exists.</p>
+        <p>
+          Today, Jerry lives in Wellington, New Zealand, where he continues to work in
+          the travel industry through New Zealand Vacations and What to do in Wellington.
+          Travelman is his first book — a memoir that's part business story, part travel
+          adventure, and part love letter to a world that no longer exists.
+        </p>
         <p>
           His mission is simple: to inspire people to fulfil their dreams.
           To go for it. Get their hands dirty. To prove that with faith,
@@ -508,6 +627,18 @@
     </div>
   </section>
 
+  <!-- BOOK CTA -->
+  <section class="book-cta" id="book-cta">
+    <div class="book-cta-cover">
+      <img src="assets/travelman-cover.jpg" alt="Travelman by Jerry Bridge — front cover">
+    </div>
+    <div class="book-cta-action">
+      <h2>Buy the Book</h2>
+      <p>A true story of ambition, travel, and risk — where building a business becomes a journey of its own.</p>
+      <a href="#" class="buy-btn">Coming Soon</a>
+    </div>
+  </section>
+
   <!-- CTA -->
   <section class="cta-section" id="contact">
     <h2>The Journey Starts Here</h2>
@@ -523,10 +654,10 @@
 
   <!-- FOOTER -->
   <footer>
-    <p>© 2026 Jerry Bridge. All rights reserved.</p>
+    <p>&copy; 2026 Jerry Bridge. All rights reserved.</p>
     <p style="margin-top: 0.5rem;">
       <a href="https://bridgetravels.com" target="_blank">bridgetravels.com</a>
-      &nbsp;•&nbsp;
+      &nbsp;&bull;&nbsp;
       <a href="https://whattodoinwellington.com" target="_blank">whattodoinwellington.com</a>
     </p>
   </footer>
@@ -553,5 +684,5 @@
     });
   </script>
 
-
-</body></html>
+</body>
+</html>
