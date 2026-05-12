@@ -43,10 +43,10 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 48px;
+  padding: 40px 48px;
   text-align: center;
-  max-width: 400px;
-  width: 90%;
+  max-width: 480px;
+  width: 92%;
 }
 .gate-box h1 {
   color: var(--gold);
@@ -56,19 +56,44 @@ body {
 .gate-box p {
   color: var(--text-dim);
   font-size: 14px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+}
+.gate-url-input {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.85rem;
+  outline: none;
+  margin-bottom: 0.6rem;
+  box-sizing: border-box;
+}
+.gate-url-input:focus { border-color: var(--gold); }
+.gate-url-input.error { border-color: var(--danger); animation: shake 0.3s; }
+.gate-label {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+  text-align: left;
 }
 .gate-input {
   width: 100%;
-  padding: 12px 16px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 0.65rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
   color: var(--text);
-  font-size: 18px;
-  text-align: center;
-  letter-spacing: 8px;
+  font-size: 0.95rem;
+  text-align: left;
+  letter-spacing: 0.1em;
   outline: none;
+  box-sizing: border-box;
+  margin-bottom: 0.6rem;
 }
 .gate-input:focus { border-color: var(--gold); }
 .gate-input.error { border-color: var(--danger); animation: shake 0.3s; }
@@ -494,6 +519,223 @@ body.col-resizing iframe { pointer-events: none; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* Add Media button */
+.add-media-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  background: transparent;
+  border: 2px dashed var(--gold);
+  border-radius: var(--radius);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.add-media-btn:hover {
+  background: rgba(212,168,83,0.1);
+}
+
+/* Added media items in editor */
+.added-media-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+.added-media-item img {
+  width: 72px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.added-media-item .ami-details {
+  flex: 1;
+  min-width: 0;
+}
+.added-media-item .ami-dims {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.added-media-item .ami-dims .ami-size-class {
+  color: var(--gold);
+  font-weight: 600;
+}
+.added-media-item .ami-warning {
+  font-size: 11px;
+  color: #ff6b6b;
+  margin-bottom: 4px;
+}
+.added-media-item input {
+  width: 100%;
+  padding: 5px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+.added-media-item input:focus { border-color: var(--gold); }
+.added-media-item select {
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  margin-bottom: 4px;
+}
+.added-media-item select:focus { border-color: var(--gold); }
+.ami-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.ami-remove:hover { opacity: 0.7; }
+.ami-layout-hint {
+  font-size: 11px;
+  color: var(--gold);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+/* Resolution warning modal */
+.res-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,41,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.res-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 440px;
+  width: 90%;
+  text-align: center;
+}
+.res-modal h3 {
+  color: #ff6b6b;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+.res-modal p {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.res-modal-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.res-modal-buttons button {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+.res-modal-buttons .btn-primary {
+  background: var(--gold);
+  color: var(--bg);
+}
+.res-modal-buttons .btn-primary:hover { background: var(--gold-dim); }
+.res-modal-buttons .btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.res-modal-buttons .btn-secondary:hover { border-color: var(--text-dim); }
+
+/* === SPACING & FONT SIZE CONTROLS === */
+.spacing-controls {
+  margin-top: 12px;
+  padding: 10px;
+  background: #1a1a2e;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+.spacing-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  margin-bottom: 8px;
+}
+.spacing-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.spacing-row span:first-child {
+  width: 80px;
+  font-size: 12px;
+  color: #aaa;
+}
+.spacing-row input[type="range"] {
+  flex: 1;
+  accent-color: #4a6cf7;
+}
+.spacing-value {
+  width: 45px;
+  text-align: right;
+  font-size: 12px;
+  color: #4a6cf7;
+  font-family: monospace;
+}
+.font-size-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.font-size-control span {
+  font-size: 11px;
+  color: #888;
+}
+.font-size-control select,
+.font-size-input {
+  background: #1a1a2e;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.font-size-input {
+  width: 55px;
+}
 </style>
 </head>
 <body>
@@ -502,8 +744,11 @@ body.col-resizing iframe { pointer-events: none; }
 <div id="gate">
   <div class="gate-box">
     <h1>Site Editor</h1>
-    <p>Enter the access code to continue</p>
-    <input type="password" id="codeInput" class="gate-input" maxlength="10" placeholder="------" autocomplete="off">
+    <p>Enter the site URL and access code</p>
+    <label class="gate-label" for="siteUrlInput">Website URL</label>
+    <input type="url" id="siteUrlInput" class="gate-url-input" placeholder="https://yourname.github.io/sitename/" autocomplete="off">
+    <label class="gate-label" for="codeInput">Access code</label>
+    <input type="password" id="codeInput" class="gate-input" placeholder="••••••••" autocomplete="off">
     <button class="gate-btn" onclick="checkCode()">Enter</button>
   </div>
 </div>
@@ -559,16 +804,34 @@ body.col-resizing iframe { pointer-events: none; }
 </div>
 
 <input type="file" id="fileChooser" accept="image/*" style="display:none">
+<input type="file" id="addMediaChooser" accept="image/*" multiple style="display:none">
+
+<!-- Resolution Warning Modal -->
+<div id="resWarningModal" class="res-modal-overlay" style="display:none">
+  <div class="res-modal">
+    <h3>⚠ Image Resolution Warning</h3>
+    <p id="resWarningText"></p>
+    <div class="res-modal-buttons">
+      <button class="btn-primary" onclick="resModalAction('upload')">Upload Larger Version</button>
+      <button class="btn-secondary" onclick="resModalAction('grid')">Add to Grid Instead</button>
+      <button class="btn-secondary" onclick="resModalAction('anyway')">Add Anyway</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ==========================================
 // CONFIG
 // ==========================================
-const ACCESS_CODE_HASH = 'ad1454c7b344ab6c524d0164f993e110f18ab9e9b13bd6f96667875fa335f6e9';
-const ENCRYPTED_PAT = '+OUr1G4Q+xWd0Frh2DYqaGYLXxCaD7raV1sdskTH9T6/MZrpZxl8ArSYcWF4JZayLJUI0pQ5QFejkE+JC4ccodFdKzP8Bktjovwt+h8EgZvNgy9f';
+// Multi-site credentials: each entry is { hash, encPat }
+// hash = sha256(password), encPat = PAT encrypted with that password via PBKDF2+AES-GCM
+const SITE_CREDS = [
+  { hash: 'f99acf0dc1b902b0ef7437f2c94acaad0f356678055fe1a585336f6c5ab8948f', encPat: 'qGS4sH5RmcdMAAj+x7gBWWsCU5QtHLoMME3ln0ecLYOoTwdH64toabomf75EI4sLetwxDjwSy0Sk1Px1NbB5AcXAmBFxON5UyYLZeKTrq8pZQkCs' },
+  { hash: 'ad1454c7b344ab6c524d0164f993e110f18ab9e9b13bd6f96667875fa335f6e9', encPat: 'BciL7noolZpOBKlAubn5GSd1AR+my/AFmFZQulncsSYrx+9Z1fjrdtozWsyrSq59ZXzgutauysD6iIphI2GSUJsUyPFdD+nNMXSYGJt1zv17wyKv' }
+];
 
-async function decryptPat(accessCode) {
-  const blob = Uint8Array.from(atob(ENCRYPTED_PAT), c => c.charCodeAt(0));
+async function decryptPat(accessCode, encPat) {
+  const blob = Uint8Array.from(atob(encPat), c => c.charCodeAt(0));
   const salt = blob.slice(0, 16);
   const iv = blob.slice(16, 28);
   const ciphertext = blob.slice(28);
@@ -576,6 +839,18 @@ async function decryptPat(accessCode) {
   const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
   const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
   return new TextDecoder().decode(decrypted);
+}
+
+function parseGithubPagesUrl(url) {
+  // Handles https://owner.github.io/repo/ or https://owner.github.io/repo
+  try {
+    const u = new URL(url.trim());
+    const hostParts = u.hostname.split('.');
+    if (hostParts.length < 3 || hostParts[1] !== 'github' || hostParts[2] !== 'io') return null;
+    const owner = hostParts[0];
+    const repo = u.pathname.replace(/^\/|\/$/g, ''); // strip leading/trailing slashes
+    return { owner, repo: repo || '' };
+  } catch (e) { return null; }
 }
 
 // ==========================================
@@ -623,28 +898,45 @@ function hideLoading() {
 document.getElementById('codeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') checkCode();
 });
+document.getElementById('siteUrlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('codeInput').focus();
+});
 
 async function checkCode() {
-  const input = document.getElementById('codeInput');
-  const code = input.value;
+  const urlInput = document.getElementById('siteUrlInput');
+  const codeInput = document.getElementById('codeInput');
+  const code = codeInput.value;
+  const urlVal = urlInput.value.trim();
+
+  // Parse URL
+  const parsed = parseGithubPagesUrl(urlVal);
+  if (!parsed) {
+    urlInput.classList.add('error');
+    setTimeout(() => urlInput.classList.remove('error'), 400);
+    return;
+  }
+
+  // Check password against known hashes
   const hash = await sha256(code);
-  if (hash === ACCESS_CODE_HASH) {
-    try {
-      const pat = await decryptPat(code);
-      state.pat = pat;
-      state.owner = 'McGroovypants';
-      state.repo = 'travelman';
-      state.filePath = 'index.html';
-      loadSiteAuto();
-    } catch(e) {
-      input.classList.add('error');
-      setTimeout(() => input.classList.remove('error'), 400);
-      input.value = '';
-    }
-  } else {
-    input.classList.add('error');
-    setTimeout(() => input.classList.remove('error'), 400);
-    input.value = '';
+  const cred = SITE_CREDS.find(c => c.hash === hash);
+  if (!cred) {
+    codeInput.classList.add('error');
+    setTimeout(() => codeInput.classList.remove('error'), 400);
+    codeInput.value = '';
+    return;
+  }
+
+  try {
+    const pat = await decryptPat(code, cred.encPat);
+    state.pat = pat;
+    state.owner = parsed.owner;
+    state.repo = parsed.repo;
+    state.filePath = 'index.html';
+    loadSiteAuto();
+  } catch(e) {
+    codeInput.classList.add('error');
+    setTimeout(() => codeInput.classList.remove('error'), 400);
+    codeInput.value = '';
   }
 }
 
@@ -653,23 +945,103 @@ async function checkCode() {
 // ==========================================
 let currentBlobUrl = null;
 
+// postMessage listener script injected into every blob preview
+const PREVIEW_BRIDGE = `<script>
+(function() {
+  window.addEventListener('message', function(e) {
+    var d = e.data;
+    if (!d || !d.type) return;
+    if (d.type === 'scrollTo') {
+      var el = document.querySelector(d.selector);
+      if (!el) return;
+      var offset = d.offset !== undefined ? d.offset : 80;
+      var top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      var orig = el.style.outline;
+      el.style.outline = '3px solid #3498db';
+      setTimeout(function() { el.style.outline = orig; }, 1500);
+    } else if (d.type === 'scrollToY') {
+      window.scrollTo(0, d.y);
+    } else if (d.type === 'updateText') {
+      var el = document.querySelector(d.selector);
+      if (el) el.textContent = d.value;
+    } else if (d.type === 'updateAlt') {
+      var el = document.querySelector(d.selector);
+      if (el) el.setAttribute('alt', d.value);
+    } else if (d.type === 'updateDisplay') {
+      var el = document.querySelector(d.selector);
+      if (el) el.style.display = d.value;
+    } else if (d.type === 'updateFontSize') {
+      var el = document.querySelector(d.selector);
+      if (el) el.style.fontSize = d.value + 'px';
+    } else if (d.type === 'updateSpacing') {
+      var el = document.querySelector(d.selector);
+      if (!el) return;
+      el.style.paddingTop = d.paddingTop + 'px';
+      el.style.paddingBottom = d.paddingBottom + 'px';
+      var disp = window.getComputedStyle(el).display;
+      if (disp === 'flex' || disp === 'grid' || disp === 'inline-flex' || disp === 'inline-grid') {
+        el.style.gap = d.gap + 'px';
+      } else {
+        var kids = Array.from(el.children);
+        kids.forEach(function(child, i) {
+          child.style.marginBottom = (i < kids.length - 1) ? d.gap + 'px' : '';
+        });
+      }
+    }
+  });
+  // Report scroll position to parent on scroll so parent can restore it
+  window.addEventListener('scroll', function() {
+    window.parent.postMessage({ type: 'previewScroll', y: window.scrollY }, '*');
+  }, { passive: true });
+})();
+<\/script>`;
+
 function loadBlobPreview(html) {
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
 
   const baseUrl = `https://${state.owner}.github.io/${state.repo}/`;
 
-  // Inject <base> tag so ALL relative URLs resolve to the GitHub raw content
+  // Inject <base> tag and postMessage bridge
   let processed = html;
   if (processed.includes('<head>')) {
     processed = processed.replace('<head>', `<head><base href="${baseUrl}">`);
   } else if (processed.includes('<HEAD>')) {
     processed = processed.replace('<HEAD>', `<HEAD><base href="${baseUrl}">`);
   }
+  // Inject bridge before </body> (or at end)
+  if (processed.includes('</body>')) {
+    processed = processed.replace('</body>', PREVIEW_BRIDGE + '</body>');
+  } else if (processed.includes('</BODY>')) {
+    processed = processed.replace('</BODY>', PREVIEW_BRIDGE + '</BODY>');
+  } else {
+    processed += PREVIEW_BRIDGE;
+  }
 
+  const iframe = document.getElementById('previewFrame');
   const blob = new Blob([processed], { type: 'text/html' });
   currentBlobUrl = URL.createObjectURL(blob);
-  document.getElementById('previewFrame').src = currentBlobUrl;
+
+  // Restore scroll position after load using the Y value saved from scroll events
+  const savedY = state._previewScrollY || 0;
+  iframe.addEventListener('load', function onLoad() {
+    iframe.removeEventListener('load', onLoad);
+    if (savedY > 10) {
+      setTimeout(function() {
+        iframe.contentWindow.postMessage({ type: 'scrollToY', y: savedY }, '*');
+      }, 150);
+    }
+  });
+
+  iframe.src = currentBlobUrl;
 }
+
+// Track preview scroll position via postMessage from the blob iframe
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'previewScroll') {
+    if (state) state._previewScrollY = e.data.y;
+  }
+});
 
 // ==========================================
 // GITHUB API
@@ -736,8 +1108,8 @@ function parseHtml(html) {
   const doc = parser.parseFromString(html, 'text/html');
   const sections = [];
 
-  // Find all sections and major containers
-  const candidates = doc.querySelectorAll('section, [id], header, footer, main, .hero, .gallery, .timeline, .awards, .about, .cta');
+  // Find all sections and major containers — body > div catches unlabelled containers like .quote-block
+  const candidates = doc.querySelectorAll('section, [id], header, footer, main, nav, article, body > div');
   const seen = new Set();
 
   candidates.forEach(el => {
@@ -755,7 +1127,7 @@ function parseHtml(html) {
 
     // Find text elements
     const textElements = [];
-    el.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, blockquote, figcaption, cite, em, strong, li, .tagline, .subtitle, .quote-text').forEach(textEl => {
+    el.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, blockquote, figcaption, cite, em, strong, li, .tagline, .subtitle, .quote-text, .caption, .award-label, .tl-text, .tl-heading, .tl-year, .hook-text, .hero-tagline, .hero-author, .hero-subtitle, .section-label').forEach(textEl => {
       const text = textEl.textContent.replace(/\s+/g, ' ').trim();
       if (!text || text.length < 2) return;
       // Skip if this is just a container for other elements we'll capture
@@ -765,6 +1137,16 @@ function parseHtml(html) {
       const selector = buildSelector(textEl);
       if (!selector) return;
 
+      // Extract font size from inline style or default by tag
+      let parsedFontSize = 16;
+      const fsMatch = (textEl.getAttribute('style') || '').match(/font-size:\s*(\d+)/);
+      if (fsMatch) {
+        parsedFontSize = parseInt(fsMatch[1], 10);
+      } else {
+        const tagDefaults = { h1: 48, h2: 36, h3: 28, h4: 24, h5: 20, h6: 18, p: 16, span: 16, a: 16, li: 16, blockquote: 20, figcaption: 14, cite: 14, em: 16, strong: 16 };
+        parsedFontSize = tagDefaults[elTag] || 16;
+      }
+
       textElements.push({
         id: `txt-${textElements.length}`,
         tag: elTag,
@@ -772,7 +1154,9 @@ function parseHtml(html) {
         content: text,
         originalContent: text,
         innerHTML: textEl.innerHTML.trim(),
-        originalInnerHTML: textEl.innerHTML.trim()
+        originalInnerHTML: textEl.innerHTML.trim(),
+        fontSize: parsedFontSize,
+        originalFontSize: parsedFontSize
       });
     });
 
@@ -819,13 +1203,30 @@ function parseHtml(html) {
     });
 
     if (textElements.length > 0 || imageElements.length > 0) {
+      // Extract padding from inline style or default
+      let parsedPaddingTop = 40, parsedPaddingBottom = 40, parsedElementGap = 20;
+      const elStyle = el.getAttribute('style') || '';
+      const ptMatch = elStyle.match(/padding-top:\s*(\d+)/);
+      const pbMatch = elStyle.match(/padding-bottom:\s*(\d+)/);
+      const gapMatch = elStyle.match(/gap:\s*(\d+)/);
+      if (ptMatch) parsedPaddingTop = parseInt(ptMatch[1], 10);
+      if (pbMatch) parsedPaddingBottom = parseInt(pbMatch[1], 10);
+      if (gapMatch) parsedElementGap = parseInt(gapMatch[1], 10);
+
       sections.push({
         id,
         name,
         tag,
         textElements,
         imageElements,
-        outerSelector: buildSelector(el)
+        addedMedia: [],
+        outerSelector: buildSelector(el),
+        paddingTop: parsedPaddingTop,
+        paddingBottom: parsedPaddingBottom,
+        elementGap: parsedElementGap,
+        originalPaddingTop: parsedPaddingTop,
+        originalPaddingBottom: parsedPaddingBottom,
+        originalElementGap: parsedElementGap
       });
     }
   });
@@ -877,7 +1278,7 @@ async function loadSiteAuto() {
     state.sections = parseHtml(content);
     state.selectedSectionId = state.sections.length > 0 ? state.sections[0].id : null;
 
-    // Setup preview
+    // Setup preview — blob URL for instant rendering
     const siteUrl = `https://${state.owner}.github.io/${state.repo}/`;
     document.getElementById('previewLink').href = siteUrl;
     loadBlobPreview(content);
@@ -910,11 +1311,13 @@ function renderSections() {
       state.selectedSectionId = section.id;
       renderSections();
       renderEditor();
+      scrollPreviewToSection(section.id);
     };
 
+    const addedCount = section.addedMedia ? section.addedMedia.length : 0;
     let html = `<div>
       <div class="name">${escapeHtml(section.name)}</div>
-      <div class="meta">${section.textElements.length}T ${section.imageElements.length}I</div>
+      <div class="meta">${section.textElements.length}T ${section.imageElements.length}I${addedCount > 0 ? ' +' + addedCount + 'M' : ''}</div>
     </div>`;
     if (changes > 0) {
       html += `<span class="badge">${changes}</span>`;
@@ -928,10 +1331,17 @@ function countSectionChanges(section) {
   let count = 0;
   section.textElements.forEach(te => {
     if (te.content !== te.originalContent) count++;
+    if (te.fontSize !== te.originalFontSize) count++;
   });
   section.imageElements.forEach(ie => {
     if (ie.deleted || ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
   });
+  if (section.addedMedia && section.addedMedia.length > 0) {
+    count += section.addedMedia.length;
+  }
+  if (section.paddingTop !== section.originalPaddingTop) count++;
+  if (section.paddingBottom !== section.originalPaddingBottom) count++;
+  if (section.elementGap !== section.originalElementGap) count++;
   return count;
 }
 
@@ -949,14 +1359,40 @@ function renderEditor() {
 
   let html = `<h3>${escapeHtml(section.name)}</h3>`;
 
+  // Section spacing controls (top, so always visible on section select)
+  html += `<div class="spacing-controls">
+    <div class="spacing-label">Section Spacing</div>
+    <div class="spacing-row">
+      <span>Pad Top</span>
+      <input type="range" min="0" max="120" step="4" value="${section.paddingTop}"
+        oninput="handlePaddingChange('${section.id}', 'top', this.value)">
+      <span class="spacing-value" id="pad-top-val-${section.id}">${section.paddingTop}px</span>
+    </div>
+    <div class="spacing-row">
+      <span>Pad Bottom</span>
+      <input type="range" min="0" max="120" step="4" value="${section.paddingBottom}"
+        oninput="handlePaddingChange('${section.id}', 'bottom', this.value)">
+      <span class="spacing-value" id="pad-bottom-val-${section.id}">${section.paddingBottom}px</span>
+    </div>
+    <div class="spacing-row">
+      <span>Element Gap</span>
+      <input type="range" min="0" max="60" step="4" value="${section.elementGap}"
+        oninput="handleGapChange('${section.id}', this.value)">
+      <span class="spacing-value" id="gap-val-${section.id}">${section.elementGap}px</span>
+    </div>
+  </div>`;
+
   // Text elements
   section.textElements.forEach((te, i) => {
     const changed = te.content !== te.originalContent;
+    const fontChanged = te.fontSize !== te.originalFontSize;
+    const anyChange = changed || fontChanged;
     const isLong = te.content.length > 80;
-    html += `<div class="element-group${changed ? ' changed' : ''}">
+    const fontSizes = [12,14,16,18,20,24,28,32,36,40,48,56,64,72];
+    html += `<div class="element-group${anyChange ? ' changed' : ''}">
       <div class="el-label">
         <span class="el-tag">${te.tag}</span>
-        ${changed ? '<span class="el-changed">Modified</span>' : ''}
+        ${anyChange ? '<span class="el-changed">Modified</span>' : ''}
       </div>
       ${isLong ?
         `<textarea data-section="${section.id}" data-element="${te.id}" data-type="text"
@@ -964,7 +1400,15 @@ function renderEditor() {
         `<input type="text" data-section="${section.id}" data-element="${te.id}" data-type="text"
           oninput="handleTextEdit(this)" value="${escapeAttr(te.content)}">`
       }
-      ${changed ? `<button class="reset-btn" onclick="resetElement('${section.id}','${te.id}','text')">Reset</button>` : ''}
+      <div class="font-size-control">
+        <span>Size</span>
+        <select onchange="handleFontSizeChange('${section.id}','${te.selector}','${te.id}',this.value)">
+          ${fontSizes.map(sz => '<option value="' + sz + '"' + (te.fontSize === sz ? ' selected' : '') + '>' + sz + 'px</option>').join('')}
+        </select>
+        <input type="number" min="8" max="120" value="${te.fontSize}" class="font-size-input"
+          onchange="handleFontSizeChange('${section.id}','${te.selector}','${te.id}',this.value)">
+      </div>
+      ${anyChange ? `<button class="reset-btn" onclick="resetElement('${section.id}','${te.id}','text')">Reset</button>` : ''}
     </div>`;
   });
 
@@ -1006,6 +1450,44 @@ function renderEditor() {
       </div>`;
     }
   });
+
+  // Added media items
+  if (section.addedMedia && section.addedMedia.length > 0) {
+    html += `<div class="element-group changed">
+      <div class="el-label">
+        <span class="el-tag">Added Media</span>
+        <span class="el-changed">${section.addedMedia.length} new</span>
+      </div>`;
+
+    section.addedMedia.forEach((am, i) => {
+      const dw = am.displayWidth || 100;
+      const minPx = Math.round(dw * 12); // rough: 1200px at 100%, 600px at 50%, etc.
+      const tooSmall = am.width < minPx;
+      html += `<div class="added-media-item">
+        <img src="data:image/jpeg;base64,${am.base64}" alt="">
+        <div class="ami-details">
+          <div class="ami-dims">${am.width} × ${am.height}</div>
+          <select onchange="handleAddedMediaWidth('${section.id}','${am.id}',this.value)">
+            ${[100,75,66,55,50,33,25].map(w => `<option value="${w}"${w === dw ? ' selected' : ''}>${w}% width</option>`).join('')}
+          </select>
+          ${tooSmall ? `<div class="ami-warning">⚠ Image may appear soft at ${dw}% — only ${am.width}px wide (recommend ${minPx}px+)</div>` : ''}
+          <input type="text" value="${escapeAttr(am.alt)}" placeholder="Alt text"
+            oninput="handleAddedMediaAlt('${section.id}','${am.id}',this.value)">
+        </div>
+        <button class="ami-remove" onclick="removeAddedMedia('${section.id}','${am.id}')" title="Remove">×</button>
+      </div>`;
+    });
+
+    // Layout hint
+    const totalWidth = section.addedMedia.reduce((sum, am) => sum + (am.displayWidth || 100), 0);
+    const layoutHint = section.addedMedia.map(am => `${am.displayWidth || 100}%`).join(' + ');
+    const wrapNote = totalWidth > 100 ? ' (will wrap to next row)' : '';
+    html += `<div class="ami-layout-hint">Layout: ${layoutHint}${wrapNote}</div>`;
+    html += `</div>`;
+  }
+
+  // Add Media button
+  html += `<button class="add-media-btn" onclick="startAddMedia('${section.id}')">+ Add Media</button>`;
 
   col.innerHTML = html;
 }
@@ -1055,6 +1537,7 @@ function deleteImage(sectionId, elementId) {
   const ie = section.imageElements.find(i => i.id === elementId);
   if (ie) {
     ie.deleted = true;
+    // Instantly hide in preview
     updatePreviewInstant(ie.selector, 'delete');
   }
   renderEditor();
@@ -1068,6 +1551,7 @@ function restoreImage(sectionId, elementId) {
   const ie = section.imageElements.find(i => i.id === elementId);
   if (ie) {
     ie.deleted = false;
+    // Instantly restore in preview
     updatePreviewInstant(ie.selector, 'restore');
   }
   renderEditor();
@@ -1076,27 +1560,24 @@ function restoreImage(sectionId, elementId) {
 }
 
 // ==========================================
-// INSTANT PREVIEW - update iframe DOM directly
+// INSTANT PREVIEW - via postMessage bridge
 // ==========================================
-function updatePreviewInstant(selector, type, value) {
-  try {
-    const iframe = document.getElementById('previewFrame');
-    const iDoc = iframe.contentDocument || iframe.contentWindow.document;
-    if (!iDoc) return;
-    const el = iDoc.querySelector(selector);
-    if (!el) return;
+function postToPreview(msg) {
+  const iframe = document.getElementById('previewFrame');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage(msg, '*');
+  }
+}
 
-    if (type === 'text') {
-      el.textContent = value;
-    } else if (type === 'alt') {
-      el.setAttribute('alt', value);
-    } else if (type === 'delete') {
-      el.style.display = 'none';
-    } else if (type === 'restore') {
-      el.style.display = '';
-    }
-  } catch (e) {
-    // Cross-origin or iframe not loaded — silently skip
+function updatePreviewInstant(selector, type, value) {
+  if (type === 'text') {
+    postToPreview({ type: 'updateText', selector, value });
+  } else if (type === 'alt') {
+    postToPreview({ type: 'updateAlt', selector, value });
+  } else if (type === 'delete') {
+    postToPreview({ type: 'updateDisplay', selector, value: 'none' });
+  } else if (type === 'restore') {
+    postToPreview({ type: 'updateDisplay', selector, value: '' });
   }
 }
 
@@ -1134,7 +1615,10 @@ function resetElement(sectionId, elementId, type) {
   if (!section) return;
   if (type === 'text') {
     const te = section.textElements.find(t => t.id === elementId);
-    if (te) te.content = te.originalContent;
+    if (te) {
+      te.content = te.originalContent;
+      te.fontSize = te.originalFontSize;
+    }
   } else {
     const ie = section.imageElements.find(i => i.id === elementId);
     if (ie) {
@@ -1179,17 +1663,38 @@ function applyChanges() {
   btn.textContent = 'Applying...';
 
   try {
+    // Build modified HTML (same as deploy but no push)
     let html = state.originalHtml;
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
     state.sections.forEach(section => {
+      // Apply spacing
+      try {
+        const sEl = doc.querySelector(section.outerSelector);
+        if (sEl) {
+          if (section.paddingTop !== section.originalPaddingTop)
+            sEl.style.paddingTop = section.paddingTop + 'px';
+          if (section.paddingBottom !== section.originalPaddingBottom)
+            sEl.style.paddingBottom = section.paddingBottom + 'px';
+          if (section.elementGap !== section.originalElementGap)
+            sEl.style.gap = section.elementGap + 'px';
+        }
+      } catch(e) { console.warn('Spacing apply failed:', e); }
+
       section.textElements.forEach(te => {
-        if (te.content === te.originalContent) return;
-        try {
-          const el = doc.querySelector(te.selector);
-          if (el) el.textContent = te.content;
-        } catch (e) { console.warn('Selector failed:', te.selector, e); }
+        if (te.content !== te.originalContent) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) el.textContent = te.content;
+          } catch (e) { console.warn('Selector failed:', te.selector, e); }
+        }
+        if (te.fontSize !== te.originalFontSize) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) el.style.fontSize = te.fontSize + 'px';
+          } catch (e) { console.warn('Font size apply failed:', te.selector, e); }
+        }
       });
 
       section.imageElements.forEach(ie => {
@@ -1213,6 +1718,43 @@ function applyChanges() {
       });
     });
 
+    // Add media with base64 data URLs for preview
+    state.sections.forEach(section => {
+      if (!section.addedMedia || section.addedMedia.length === 0) return;
+      try {
+        const sectionEl = doc.querySelector(section.outerSelector);
+        if (!sectionEl) return;
+
+        // Remove any existing added-media div (from a previous Apply)
+        const existing = sectionEl.querySelector('.added-media');
+        if (existing) existing.remove();
+
+        const container = doc.createElement('div');
+        container.className = 'added-media';
+        container.setAttribute('style', 'display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem;');
+
+        section.addedMedia.forEach(am => {
+          const dw = am.displayWidth || 100;
+          const wrapper = doc.createElement('div');
+          if (dw === 100) {
+            wrapper.setAttribute('style', 'width:100%;');
+          } else {
+            wrapper.setAttribute('style', `flex:0 0 calc(${dw}% - 0.5rem);max-width:calc(${dw}% - 0.5rem);`);
+          }
+          const img = doc.createElement('img');
+          // Use base64 for preview since file isn't on GitHub yet
+          img.setAttribute('src', am.base64 ? 'data:image/jpeg;base64,' + am.base64 : 'assets/' + am.fileName);
+          img.setAttribute('alt', am.alt || '');
+          img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
+          wrapper.appendChild(img);
+          container.appendChild(wrapper);
+        });
+
+        sectionEl.appendChild(container);
+      } catch (e) { console.warn('Failed to add media to section:', section.id, e); }
+    });
+
+    // Serialize and load into blob preview
     const previewHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
     loadBlobPreview(previewHtml);
 
@@ -1249,21 +1791,39 @@ async function deploySite() {
     const doc = parser.parseFromString(html, 'text/html');
 
     state.sections.forEach(section => {
+      // Apply spacing
+      try {
+        const sEl = doc.querySelector(section.outerSelector);
+        if (sEl) {
+          if (section.paddingTop !== section.originalPaddingTop)
+            sEl.style.paddingTop = section.paddingTop + 'px';
+          if (section.paddingBottom !== section.originalPaddingBottom)
+            sEl.style.paddingBottom = section.paddingBottom + 'px';
+          if (section.elementGap !== section.originalElementGap)
+            sEl.style.gap = section.elementGap + 'px';
+        }
+      } catch(e) { console.warn('Spacing deploy failed:', e); }
+
       section.textElements.forEach(te => {
-        if (te.content === te.originalContent) return;
-        try {
-          const el = doc.querySelector(te.selector);
-          if (el) {
-            // If inner HTML was just text, replace textContent
-            if (el.children.length === 0) {
-              el.textContent = te.content;
-            } else {
-              // Try to replace the text portion
-              el.textContent = te.content;
+        if (te.content !== te.originalContent) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) {
+              if (el.children.length === 0) {
+                el.textContent = te.content;
+              } else {
+                el.textContent = te.content;
+              }
             }
+          } catch (e) {
+            console.warn('Selector failed:', te.selector, e);
           }
-        } catch (e) {
-          console.warn('Selector failed:', te.selector, e);
+        }
+        if (te.fontSize !== te.originalFontSize) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) el.style.fontSize = te.fontSize + 'px';
+          } catch (e) { console.warn('Font size deploy failed:', te.selector, e); }
         }
       });
 
@@ -1286,6 +1846,40 @@ async function deploySite() {
       });
     });
 
+    // Add media to sections
+    state.sections.forEach(section => {
+      if (!section.addedMedia || section.addedMedia.length === 0) return;
+      try {
+        const sectionEl = doc.querySelector(section.outerSelector);
+        if (!sectionEl) return;
+
+        const container = doc.createElement('div');
+        container.className = 'added-media';
+        container.setAttribute('style', 'display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem;');
+
+        section.addedMedia.forEach(am => {
+          const dw = am.displayWidth || 100;
+          const wrapper = doc.createElement('div');
+          // Subtract gap: use calc to account for flex gap
+          if (dw === 100) {
+            wrapper.setAttribute('style', 'width:100%;');
+          } else {
+            wrapper.setAttribute('style', `flex:0 0 calc(${dw}% - 0.5rem);max-width:calc(${dw}% - 0.5rem);`);
+          }
+          const img = doc.createElement('img');
+          img.setAttribute('src', 'assets/' + am.fileName);
+          img.setAttribute('alt', am.alt || '');
+          img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
+          wrapper.appendChild(img);
+          container.appendChild(wrapper);
+        });
+
+        sectionEl.appendChild(container);
+      } catch (e) {
+        console.warn('Failed to add media to section:', section.id, e);
+      }
+    });
+
     // Inject deploy marker for live-check polling
     const deployMarker = `deploy-${Date.now()}`;
     const markerComment = doc.createComment(deployMarker);
@@ -1302,7 +1896,7 @@ async function deploySite() {
     state.fileSha = result.content.sha;
     state.originalHtml = newHtml;
 
-    // Push any new image files
+    // Push any new image files (swapped)
     const newImages = [];
     state.sections.forEach(s => {
       s.imageElements.forEach(ie => {
@@ -1312,10 +1906,31 @@ async function deploySite() {
       });
     });
 
+    // Also collect added media images
+    const addedMediaImages = [];
+    state.sections.forEach(s => {
+      if (s.addedMedia) {
+        s.addedMedia.forEach(am => {
+          addedMediaImages.push(am);
+        });
+      }
+    });
+
+    const totalImages = newImages.length + addedMediaImages.length;
+    let imgIdx = 0;
+
     for (let i = 0; i < newImages.length; i++) {
       const ie = newImages[i];
-      showLoading(`Uploading image ${i + 1}/${newImages.length}...`);
+      imgIdx++;
+      showLoading(`Uploading image ${imgIdx}/${totalImages}...`);
       await pushBinaryFile(`assets/${ie.newFileName}`, ie.newFileBase64, `Add image: ${ie.newFileName}`);
+    }
+
+    for (let i = 0; i < addedMediaImages.length; i++) {
+      const am = addedMediaImages[i];
+      imgIdx++;
+      showLoading(`Uploading image ${imgIdx}/${totalImages}...`);
+      await pushBinaryFile(`assets/${am.fileName}`, am.base64, `Add media: ${am.fileName}`);
     }
 
     // Reset change tracking
@@ -1323,8 +1938,9 @@ async function deploySite() {
       s.textElements.forEach(te => {
         te.originalContent = te.content;
         te.originalInnerHTML = te.content;
+        te.originalFontSize = te.fontSize;
       });
-      // Remove deleted images from state
+      // Remove deleted images from state (they've been removed from DOM)
       s.imageElements = s.imageElements.filter(ie => !ie.deleted);
       s.imageElements.forEach(ie => {
         ie.originalSrc = ie.src;
@@ -1332,6 +1948,10 @@ async function deploySite() {
         ie.newFileBase64 = null;
         ie.newFileName = null;
       });
+      s.addedMedia = [];
+      s.originalPaddingTop = s.paddingTop;
+      s.originalPaddingBottom = s.paddingBottom;
+      s.originalElementGap = s.elementGap;
     });
 
     btn.textContent = 'Deployed!';
@@ -1405,6 +2025,241 @@ async function checkLiveStatus(deployMarker) {
 
 function backToSetup() {
   show('setup');
+}
+
+// ==========================================
+// ADD MEDIA
+// ==========================================
+let addMediaState = {
+  targetSectionId: null,
+  pendingSmallImages: [], // images awaiting resolution decision
+  resolvingIndex: 0
+};
+
+function getSizeClass(width) {
+  if (width >= 1200) return 'full';
+  if (width >= 600) return 'half';
+  if (width >= 400) return 'third';
+  return 'small';
+}
+
+function getLayoutHint(addedMedia) {
+  if (!addedMedia || addedMedia.length === 0) return 'None';
+  return addedMedia.map(am => `${am.displayWidth || 100}%`).join(' + ');
+}
+
+function startAddMedia(sectionId) {
+  addMediaState.targetSectionId = sectionId;
+  document.getElementById('addMediaChooser').click();
+}
+
+document.getElementById('addMediaChooser').addEventListener('change', function(e) {
+  if (!e.target.files.length || !addMediaState.targetSectionId) return;
+  const files = Array.from(e.target.files);
+  const sectionId = addMediaState.targetSectionId;
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+
+  let processed = 0;
+  const toResolve = [];
+
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const base64 = ev.target.result.split(',')[1];
+      const img = new Image();
+      img.onload = function() {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const sizeClass = getSizeClass(w);
+        // Default display width based on resolution
+        const defaultWidth = w >= 1200 ? 100 : w >= 600 ? 50 : w >= 400 ? 33 : 25;
+        const mediaItem = {
+          id: 'added-' + Date.now() + '-' + Math.random().toString(36).substr(2,5),
+          base64: base64,
+          fileName: file.name.toLowerCase().replace(/\s+/g, '-'),
+          width: w,
+          height: h,
+          alt: '',
+          sizeClass: sizeClass,
+          displayWidth: defaultWidth
+        };
+
+        if (sizeClass === 'small') {
+          toResolve.push(mediaItem);
+        } else {
+          section.addedMedia.push(mediaItem);
+        }
+
+        processed++;
+        if (processed === files.length) {
+          // All files processed
+          if (toResolve.length > 0) {
+            addMediaState.pendingSmallImages = toResolve;
+            addMediaState.resolvingIndex = 0;
+            showResWarning(toResolve[0]);
+          } else {
+            renderEditor();
+            renderSections();
+            updateChangeCount();
+          }
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  e.target.value = '';
+});
+
+function showResWarning(mediaItem) {
+  const modal = document.getElementById('resWarningModal');
+  const text = document.getElementById('resWarningText');
+  text.textContent = `This image is only ${mediaItem.width}px wide. For the best display, we recommend at least 400px wide (ideally 1200px+ for full-width display).`;
+  modal.style.display = 'flex';
+}
+
+function resModalAction(action) {
+  const modal = document.getElementById('resWarningModal');
+  const pending = addMediaState.pendingSmallImages;
+  const current = pending[addMediaState.resolvingIndex];
+  const section = state.sections.find(s => s.id === addMediaState.targetSectionId);
+
+  if (action === 'upload') {
+    // Remove this item, re-open file chooser for replacement
+    pending.splice(addMediaState.resolvingIndex, 1);
+    modal.style.display = 'none';
+    // Re-open chooser
+    document.getElementById('addMediaChooser').click();
+    return;
+  }
+
+  if (action === 'grid') {
+    // Add at 33% width and prompt for more
+    current.displayWidth = 33;
+    if (section) section.addedMedia.push(current);
+    advanceResModal();
+    // After resolving all, open chooser for more
+    if (addMediaState.resolvingIndex >= pending.length) {
+      renderEditor();
+      renderSections();
+      updateChangeCount();
+      setTimeout(() => {
+        document.getElementById('addMediaChooser').click();
+      }, 100);
+    }
+    return;
+  }
+
+  if (action === 'anyway') {
+    // Add at 25% width with warning
+    current.displayWidth = 25;
+    if (section) section.addedMedia.push(current);
+    advanceResModal();
+    return;
+  }
+}
+
+function advanceResModal() {
+  const modal = document.getElementById('resWarningModal');
+  const pending = addMediaState.pendingSmallImages;
+  addMediaState.resolvingIndex++;
+
+  if (addMediaState.resolvingIndex < pending.length) {
+    showResWarning(pending[addMediaState.resolvingIndex]);
+  } else {
+    modal.style.display = 'none';
+    addMediaState.pendingSmallImages = [];
+    renderEditor();
+    renderSections();
+    updateChangeCount();
+  }
+}
+
+function handleAddedMediaWidth(sectionId, mediaId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const am = section.addedMedia.find(m => m.id === mediaId);
+  if (am) {
+    am.displayWidth = parseInt(value, 10);
+    renderEditor();
+    renderSections();
+    updateChangeCount();
+  }
+}
+
+function handleAddedMediaAlt(sectionId, mediaId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const am = section.addedMedia.find(m => m.id === mediaId);
+  if (am) am.alt = value;
+}
+
+function removeAddedMedia(sectionId, mediaId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  section.addedMedia = section.addedMedia.filter(m => m.id !== mediaId);
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+// ==========================================
+// SPACING & FONT SIZE HANDLERS
+// ==========================================
+function handlePaddingChange(sectionId, side, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  value = parseInt(value, 10);
+  if (side === 'top') section.paddingTop = value;
+  else section.paddingBottom = value;
+  // Update just the display value, not the whole editor (avoids losing slider focus)
+  const valSpan = document.getElementById(`pad-${side}-val-${sectionId}`);
+  if (valSpan) valSpan.textContent = value + 'px';
+  updateChangeCount();
+  updateSpacingPreview(section);
+}
+
+function handleGapChange(sectionId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  section.elementGap = parseInt(value, 10);
+  const valSpan = document.getElementById(`gap-val-${sectionId}`);
+  if (valSpan) valSpan.textContent = section.elementGap + 'px';
+  updateChangeCount();
+  updateSpacingPreview(section);
+}
+
+function handleFontSizeChange(sectionId, selector, elementId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const te = section.textElements.find(t => t.id === elementId);
+  if (!te) return;
+  te.fontSize = parseInt(value, 10);
+  // Update just the font size display, not the whole editor
+  const valSpan = document.getElementById(`font-val-${elementId}`);
+  if (valSpan) valSpan.textContent = te.fontSize + 'px';
+  updateChangeCount();
+  // Live preview via postMessage bridge
+  postToPreview({ type: 'updateFontSize', selector, value: te.fontSize });
+}
+
+function updateSpacingPreview(section) {
+  postToPreview({
+    type: 'updateSpacing',
+    selector: section.outerSelector,
+    paddingTop: section.paddingTop,
+    paddingBottom: section.paddingBottom,
+    gap: section.elementGap
+  });
+}
+
+
+function scrollPreviewToSection(sectionId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  postToPreview({ type: 'scrollTo', selector: section.outerSelector });
 }
 
 // ==========================================
