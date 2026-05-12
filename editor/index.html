@@ -1751,7 +1751,17 @@ function applyChanges() {
         if (te.content !== te.originalContent) {
           try {
             const el = doc.querySelector(te.selector);
-            if (el) el.textContent = te.content;
+            if (el) {
+              const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+              const textNodes = [];
+              let node;
+              while (node = walker.nextNode()) textNodes.push(node);
+              if (textNodes.length === 1) {
+                textNodes[0].textContent = te.content;
+              } else {
+                el.textContent = te.content;
+              }
+            }
           } catch (e) { console.warn('Selector failed:', te.selector, e); }
         }
         if (te.fontSize !== te.originalFontSize) {
@@ -1856,6 +1866,9 @@ async function deploySite() {
   showLoading('Applying changes...');
 
   try {
+    // Build deploy summary for diagnostics
+    let deployLog = { text: 0, fontSize: 0, fontColor: 0, spacing: 0, images: 0, selectorFails: 0 };
+
     // Apply text changes to HTML
     let html = state.originalHtml;
     const parser = new DOMParser();
@@ -1866,12 +1879,18 @@ async function deploySite() {
       try {
         const sEl = doc.querySelector(section.outerSelector);
         if (sEl) {
-          if (section.paddingTop !== section.originalPaddingTop)
+          if (section.paddingTop !== section.originalPaddingTop) {
             sEl.style.paddingTop = section.paddingTop + 'px';
-          if (section.paddingBottom !== section.originalPaddingBottom)
+            deployLog.spacing++;
+          }
+          if (section.paddingBottom !== section.originalPaddingBottom) {
             sEl.style.paddingBottom = section.paddingBottom + 'px';
-          if (section.elementGap !== section.originalElementGap)
+            deployLog.spacing++;
+          }
+          if (section.elementGap !== section.originalElementGap) {
             sEl.style.gap = section.elementGap + 'px';
+            deployLog.spacing++;
+          }
         }
       } catch(e) { console.warn('Spacing deploy failed:', e); }
 
@@ -1880,26 +1899,38 @@ async function deploySite() {
           try {
             const el = doc.querySelector(te.selector);
             if (el) {
-              if (el.children.length === 0) {
-                el.textContent = te.content;
+              // Walk text nodes to preserve child element structure
+              const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+              const textNodes = [];
+              let node;
+              while (node = walker.nextNode()) textNodes.push(node);
+              if (textNodes.length === 1) {
+                textNodes[0].textContent = te.content;
               } else {
+                // Fallback: set textContent (strips children but preserves change)
                 el.textContent = te.content;
               }
+              deployLog.text++;
+              console.log('[Deploy] Text changed:', te.selector, '→', te.content.substring(0, 40));
+            } else {
+              console.warn('[Deploy] Selector returned null:', te.selector);
+              deployLog.selectorFails++;
             }
           } catch (e) {
             console.warn('Selector failed:', te.selector, e);
+            deployLog.selectorFails++;
           }
         }
         if (te.fontSize !== te.originalFontSize) {
           try {
             const el = doc.querySelector(te.selector);
-            if (el) el.style.fontSize = te.fontSize + 'px';
+            if (el) { el.style.fontSize = te.fontSize + 'px'; deployLog.fontSize++; }
           } catch (e) { console.warn('Font size deploy failed:', te.selector, e); }
         }
         if (te.fontColor !== te.originalFontColor) {
           try {
             const el = doc.querySelector(te.selector);
-            if (el) el.style.color = te.fontColor;
+            if (el) { el.style.color = te.fontColor; deployLog.fontColor++; }
           } catch (e) { console.warn('Font color deploy failed:', te.selector, e); }
         }
       });
@@ -1967,8 +1998,12 @@ async function deploySite() {
     const serializer = new XMLSerializer();
     let newHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 
+    // Show deploy summary
+    const summary = `Deploying: ${deployLog.text} text, ${deployLog.fontSize} font-size, ${deployLog.fontColor} colour, ${deployLog.spacing} spacing, ${deployLog.selectorFails} selector fails`;
+    console.log('[Deploy]', summary);
+    showLoading(summary + ' — pushing...');
+
     // Push HTML file
-    showLoading('Pushing HTML to GitHub...');
     const result = await pushFile(state.filePath, newHtml, 'Update site via Site Editor', state.fileSha);
     state.fileSha = result.content.sha;
     state.originalHtml = newHtml;
