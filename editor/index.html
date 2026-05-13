@@ -1043,6 +1043,18 @@ const PREVIEW_BRIDGE = `<script>
     } else if (d.type === 'updateFontColor') {
       var el = document.querySelector(d.selector);
       if (el) el.style.color = d.value;
+    } else if (d.type === 'updateImageScale') {
+      var el = document.querySelector(d.selector);
+      if (!el) return;
+      if (d.isBgImage) {
+        el.style.backgroundSize = d.value + '%';
+      } else {
+        el.style.width = d.value + '%';
+        el.style.height = 'auto';
+      }
+    } else if (d.type === 'updateFontFamily') {
+      var el = document.querySelector(d.selector);
+      if (el) el.style.fontFamily = d.value;
     } else if (d.type === 'updateSpacing') {
       var el = document.querySelector(d.selector);
       if (!el) return;
@@ -1172,6 +1184,34 @@ async function pushBinaryFile(path, base64Content, message) {
 // ==========================================
 // HTML PARSER
 // ==========================================
+
+// ==========================================
+// FONT DETECTION - scan site HTML for loaded fonts
+// ==========================================
+function detectSiteFonts(html) {
+  const fonts = new Set();
+  // Google Fonts from <link> tags
+  const linkMatches = html.matchAll(/fonts\.googleapis\.com\/css2?\?family=([^"&]+)/g);
+  for (const m of linkMatches) {
+    const families = decodeURIComponent(m[1]).split('|');
+    families.forEach(f => {
+      const name = f.split(':')[0].replace(/\+/g, ' ');
+      fonts.add(name);
+    });
+  }
+  // @font-face declarations
+  const faceMatches = html.matchAll(/@font-face[^}]*font-family:\s*['"]?([^'";} ]+)/g);
+  for (const m of faceMatches) {
+    fonts.add(m[1].trim());
+  }
+  // Common web-safe fonts always available
+  const webSafe = ['Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Verdana', 'Trebuchet MS', 'Courier New', 'Impact'];
+  webSafe.forEach(f => fonts.add(f));
+  return Array.from(fonts).sort();
+}
+
+let detectedFonts = [];
+
 function parseHtml(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -1223,6 +1263,13 @@ function parseHtml(html) {
         parsedFontColor = rgbToHex(fcMatch[1].trim());
       }
 
+      // Extract font family from inline style
+      let parsedFontFamily = '';
+      const ffMatch = (textEl.getAttribute('style') || '').match(/font-family:\s*([^;]+)/);
+      if (ffMatch) {
+        parsedFontFamily = ffMatch[1].trim();
+      }
+
       textElements.push({
         id: `txt-${textElements.length}`,
         tag: elTag,
@@ -1234,7 +1281,9 @@ function parseHtml(html) {
         fontSize: parsedFontSize,
         originalFontSize: parsedFontSize,
         fontColor: parsedFontColor,
-        originalFontColor: parsedFontColor
+        originalFontColor: parsedFontColor,
+        fontFamily: parsedFontFamily,
+        originalFontFamily: parsedFontFamily
       });
     });
 
@@ -1246,6 +1295,11 @@ function parseHtml(html) {
       const selector = buildSelector(img);
       if (!selector) return;
 
+      // Parse existing width style for scale
+      const imgStyle = img.getAttribute('style') || '';
+      const imgWidthMatch = imgStyle.match(/width:\s*(\d+)%/);
+      const imgScale = imgWidthMatch ? parseInt(imgWidthMatch[1], 10) : 100;
+
       imageElements.push({
         id: `img-${imageElements.length}`,
         selector,
@@ -1253,6 +1307,8 @@ function parseHtml(html) {
         originalSrc: src,
         alt,
         originalAlt: alt,
+        imageScale: imgScale,
+        originalImageScale: imgScale,
         newFileBase64: null,
         newFileName: null
       });
@@ -1267,6 +1323,10 @@ function parseHtml(html) {
       const selector = buildSelector(bgEl);
       if (!selector) return;
 
+      // Parse existing background-size for scale
+      const bgSizeMatch = style.match(/background-size:\s*(\d+)%/);
+      const bgScale = bgSizeMatch ? parseInt(bgSizeMatch[1], 10) : 100;
+
       imageElements.push({
         id: `bg-${imageElements.length}`,
         selector,
@@ -1275,6 +1335,8 @@ function parseHtml(html) {
         alt: '',
         originalAlt: '',
         isBgImage: true,
+        imageScale: bgScale,
+        originalImageScale: bgScale,
         newFileBase64: null,
         newFileName: null
       });
@@ -1353,6 +1415,7 @@ async function loadSiteAuto() {
     state.fileSha = sha;
 
     showLoading('Parsing sections...');
+    detectedFonts = detectSiteFonts(content);
     state.sections = parseHtml(content);
     state.selectedSectionId = state.sections.length > 0 ? state.sections[0].id : null;
 
@@ -1411,9 +1474,11 @@ function countSectionChanges(section) {
     if (te.content !== te.originalContent) count++;
     if (te.fontSize !== te.originalFontSize) count++;
     if (te.fontColor !== te.originalFontColor) count++;
+    if (te.fontFamily !== te.originalFontFamily) count++;
   });
   section.imageElements.forEach(ie => {
     if (ie.deleted || ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
+    if (ie.imageScale !== ie.originalImageScale) count++;
   });
   if (section.addedMedia && section.addedMedia.length > 0) {
     count += section.addedMedia.length;
@@ -1464,7 +1529,7 @@ function renderEditor() {
   // Text elements
   section.textElements.forEach((te, i) => {
     const changed = te.content !== te.originalContent;
-    const fontChanged = te.fontSize !== te.originalFontSize;
+    const fontChanged = te.fontSize !== te.originalFontSize || te.fontFamily !== te.originalFontFamily;
     const colorChanged = te.fontColor !== te.originalFontColor;
     const anyChange = changed || fontChanged || colorChanged;
     const isLong = te.content.length > 80;
@@ -1487,6 +1552,15 @@ function renderEditor() {
         </select>
         <input type="number" min="8" max="120" value="${te.fontSize}" class="font-size-input"
           onchange="handleFontSizeChange('${section.id}','${te.selector}','${te.id}',this.value)">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+          <label style="font-size:11px;color:#888;white-space:nowrap;">Font:</label>
+          <select style="flex:1;padding:3px 6px;font-size:12px;border:1px solid #ddd;border-radius:4px;background:#1a1a2e;color:#eee;${te.fontFamily !== te.originalFontFamily ? 'border-color:#e67e22;' : ''}"
+            onchange="handleFontFamilyChange('${section.id}','${te.id}',this.value)">
+            <option value="${te.originalFontFamily}">${te.originalFontFamily ? 'Original (' + te.originalFontFamily.split(',')[0].replace(/['\"/]/g,'').trim() + ')' : 'Default'}</option>
+            ${detectedFonts.map(f => '<option value="' + f + '"' + (te.fontFamily === f ? ' selected' : '') + '>' + f + '</option>').join('')}
+          </select>
+          ${te.fontFamily !== te.originalFontFamily ? '<button class="reset-btn" style="margin:0;padding:2px 6px;font-size:10px;" onclick="resetFontFamily(\x27' + section.id + '\x27,\x27' + te.id + '\x27)">Reset</button>' : ''}
       </div>
       <div class="font-color-control">
         <span>Colour</span>
@@ -1525,6 +1599,14 @@ function renderEditor() {
         <div class="img-preview">
           <img src="${imgSrc}" alt="${escapeAttr(ie.alt)}" onerror="this.style.display='none'">
           <div class="img-info">${escapeHtml(ie.src.split('/').pop())}</div>
+          <div style="margin:6px 0;display:flex;align-items:center;gap:8px;">
+            <label style="font-size:11px;color:#888;white-space:nowrap;">Size:</label>
+            <input type="range" min="20" max="200" step="10" value="${ie.imageScale}"
+              style="flex:1;cursor:pointer;"
+              oninput="handleImageScale('${section.id}','${ie.id}',parseInt(this.value));this.nextElementSibling.textContent=this.value+'%'"
+            >
+            <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;${ie.imageScale !== ie.originalImageScale ? 'color:#e67e22;' : ''}">${ie.imageScale}%</span>
+          </div>
           <button class="swap-btn" onclick="startImageSwap('${section.id}','${ie.id}')">Swap</button>
           <button class="delete-btn" onclick="deleteImage('${section.id}','${ie.id}')">Delete</button>
         </div>
@@ -1704,6 +1786,7 @@ function resetElement(sectionId, elementId, type) {
     if (te) {
       te.content = te.originalContent;
       te.fontSize = te.originalFontSize;
+      te.fontFamily = te.originalFontFamily;
       te.fontColor = te.originalFontColor;
     }
   } else {
@@ -1798,6 +1881,29 @@ function applyChanges() {
             if (el) el.style.color = te.fontColor;
           } catch (e) { console.warn('Font color apply failed:', te.selector, e); }
         }
+        if (te.fontFamily !== te.originalFontFamily) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) el.style.fontFamily = te.fontFamily;
+          } catch (e) { console.warn('Font family apply failed:', te.selector, e); }
+        }
+      });
+
+      // Apply image scale changes
+      section.imageElements.forEach(ie => {
+        if (!ie.deleted && ie.imageScale !== ie.originalImageScale) {
+          try {
+            const el = doc.querySelector(ie.selector);
+            if (el) {
+              if (ie.isBgImage) {
+                el.style.backgroundSize = ie.imageScale + '%';
+              } else {
+                el.style.width = ie.imageScale + '%';
+                el.style.height = 'auto';
+              }
+            }
+          } catch (e) { console.warn('Image scale apply failed:', ie.selector, e); }
+        }
       });
 
       section.imageElements.forEach(ie => {
@@ -1889,7 +1995,7 @@ async function deploySite() {
 
   try {
     // Build deploy summary for diagnostics
-    let deployLog = { text: 0, fontSize: 0, fontColor: 0, spacing: 0, images: 0, selectorFails: 0 };
+    let deployLog = { text: 0, fontSize: 0, fontColor: 0, fontFamily: 0, imageScale: 0, spacing: 0, images: 0, selectorFails: 0 };
 
     // Apply text changes to HTML
     let html = state.originalHtml;
@@ -2021,7 +2127,7 @@ async function deploySite() {
     let newHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 
     // Show deploy summary
-    const summary = `Deploying: ${deployLog.text} text, ${deployLog.fontSize} font-size, ${deployLog.fontColor} colour, ${deployLog.spacing} spacing, ${deployLog.selectorFails} selector fails`;
+    const summary = `Deploying: ${deployLog.text} text, ${deployLog.fontSize} font-size, ${deployLog.fontFamily} font-family, ${deployLog.fontColor} colour, ${deployLog.imageScale} image-scale, ${deployLog.spacing} spacing, ${deployLog.selectorFails} selector fails`;
     console.log('[Deploy]', summary);
     showLoading(summary + ' — pushing...');
 
@@ -2073,11 +2179,13 @@ async function deploySite() {
         te.originalContent = te.content;
         te.originalInnerHTML = te.content;
         te.originalFontSize = te.fontSize;
+        te.originalFontFamily = te.fontFamily;
         te.originalFontColor = te.fontColor;
       });
       // Remove deleted images from state (they've been removed from DOM)
       s.imageElements = s.imageElements.filter(ie => !ie.deleted);
       s.imageElements.forEach(ie => {
+        ie.originalImageScale = ie.imageScale;
         ie.originalSrc = ie.src;
         ie.originalAlt = ie.alt;
         ie.newFileBase64 = null;
@@ -2364,6 +2472,57 @@ function handleGapChange(sectionId, value) {
   if (valSpan) valSpan.textContent = section.elementGap + 'px';
   updateChangeCount();
   updateSpacingPreview(section);
+}
+
+
+// IMAGE SCALE HANDLER
+function handleImageScale(sectionId, elementId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (!ie) return;
+  ie.imageScale = value;
+  updateChangeCount();
+  renderSections();
+  // Live preview
+  const selector = ie.selector;
+  postToPreview({ type: 'updateImageScale', selector, value: ie.imageScale, isBgImage: !!ie.isBgImage });
+}
+
+function resetImageScale(sectionId, elementId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (!ie) return;
+  ie.imageScale = ie.originalImageScale;
+  updateChangeCount();
+  renderSections();
+  renderEditor();
+  postToPreview({ type: 'updateImageScale', selector: ie.selector, value: ie.imageScale, isBgImage: !!ie.isBgImage });
+}
+
+// FONT FAMILY HANDLER
+function handleFontFamilyChange(sectionId, elementId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const te = section.textElements.find(t => t.id === elementId);
+  if (!te) return;
+  te.fontFamily = value;
+  updateChangeCount();
+  renderSections();
+  postToPreview({ type: 'updateFontFamily', selector: te.selector, value: te.fontFamily });
+}
+
+function resetFontFamily(sectionId, elementId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const te = section.textElements.find(t => t.id === elementId);
+  if (!te) return;
+  te.fontFamily = te.originalFontFamily;
+  updateChangeCount();
+  renderSections();
+  renderEditor();
+  postToPreview({ type: 'updateFontFamily', selector: te.selector, value: te.fontFamily });
 }
 
 function handleFontSizeChange(sectionId, selector, elementId, value) {
