@@ -520,6 +520,85 @@ body.col-resizing iframe { pointer-events: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
+
+/* Reorder buttons */
+.reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 6px;
+}
+.reorder-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  width: 24px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.reorder-btn:hover {
+  background: var(--gold);
+  color: #000;
+}
+.reorder-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.reorder-btn:disabled:hover {
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+/* Insert media buttons */
+.insert-media-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px;
+  margin: 4px 0;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  opacity: 0.5;
+}
+.insert-media-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(212,168,83,0.05);
+  opacity: 1;
+}
+/* Match size button */
+.match-size-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin: 6px 0;
+  background: rgba(212,168,83,0.08);
+  border-radius: var(--radius);
+  border: 1px solid rgba(212,168,83,0.2);
+}
+.match-size-bar label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.match-size-bar select {
+  flex: 1;
+  font-size: 12px;
+}
+
 /* Add Media button */
 .add-media-btn {
   display: flex;
@@ -1360,6 +1439,7 @@ function parseHtml(html) {
         textElements,
         imageElements,
         addedMedia: [],
+        originalImageOrder: imageElements.map(ie => ie.id),
         outerSelector: buildSelector(el),
         paddingTop: parsedPaddingTop,
         paddingBottom: parsedPaddingBottom,
@@ -1483,6 +1563,12 @@ function countSectionChanges(section) {
   if (section.addedMedia && section.addedMedia.length > 0) {
     count += section.addedMedia.length;
   }
+  // Check if image order changed
+  if (section.originalImageOrder) {
+    const currentOrder = section.imageElements.map(ie => ie.id).join(',');
+    const origOrder = section.originalImageOrder.join(',');
+    if (currentOrder !== origOrder) count++;
+  }
   if (section.paddingTop !== section.originalPaddingTop) count++;
   if (section.paddingBottom !== section.originalPaddingBottom) count++;
   if (section.elementGap !== section.originalElementGap) count++;
@@ -1573,51 +1659,65 @@ function renderEditor() {
   });
 
   // Image elements
+  const visibleImages = section.imageElements.filter(x => !x.deleted);
   section.imageElements.forEach((ie, i) => {
-    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64;
+    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale;
     const imgSrc = ie.newFileBase64 ?
-      `data:image/jpeg;base64,${ie.newFileBase64}` :
+      'data:image/jpeg;base64,' + ie.newFileBase64 :
       resolveImageUrl(ie.src);
+    const visIdx = visibleImages.indexOf(ie);
 
     if (ie.deleted) {
-      html += `<div class="element-group changed">
-        <div class="el-label">
-          <span class="el-tag">${ie.isBgImage ? 'background' : 'image'}</span>
-          <span class="el-changed" style="color:#e74c3c;">Deleted</span>
-        </div>
-        <div style="padding:8px 0;color:#888;font-size:12px;">
-          <em>${escapeHtml(ie.originalSrc.split('/').pop())}</em> — will be removed on deploy
-          <button class="reset-btn" onclick="restoreImage('${section.id}','${ie.id}')">Undo Delete</button>
-        </div>
-      </div>`;
+      html += '<div class="element-group changed">';
+      html += '  <div class="el-label">';
+      html += '    <span class="el-tag">' + (ie.isBgImage ? 'background' : 'image') + '</span>';
+      html += '    <span class="el-changed" style="color:#e74c3c;">Deleted</span>';
+      html += '  </div>';
+      html += '  <div style="padding:8px 0;color:#888;font-size:12px;">';
+      html += '    <em>' + escapeHtml(ie.originalSrc.split('/').pop()) + '</em> will be removed on deploy';
+      html += '    <button class="reset-btn" onclick="restoreImage(\'' + section.id + '\',\'' + ie.id + '\')">Undo Delete</button>';
+      html += '  </div>';
+      html += '</div>';
     } else {
-      html += `<div class="element-group${changed ? ' changed' : ''}">
-        <div class="el-label">
-          <span class="el-tag">${ie.isBgImage ? 'background' : 'image'}</span>
-          ${changed ? '<span class="el-changed">Modified</span>' : ''}
-        </div>
-        <div class="img-preview">
-          <img src="${imgSrc}" alt="${escapeAttr(ie.alt)}" onerror="this.style.display='none'">
-          <div class="img-info">${escapeHtml(ie.src.split('/').pop())}</div>
-          <div style="margin:6px 0;display:flex;align-items:center;gap:8px;">
-            <label style="font-size:11px;color:#888;white-space:nowrap;">Size:</label>
-            <input type="range" min="20" max="200" step="10" value="${ie.imageScale}"
-              style="flex:1;cursor:pointer;"
-              oninput="handleImageScale('${section.id}','${ie.id}',parseInt(this.value));this.nextElementSibling.textContent=this.value+'%'"
-            >
-            <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;${ie.imageScale !== ie.originalImageScale ? 'color:#e67e22;' : ''}">${ie.imageScale}%</span>
-          </div>
-          <button class="swap-btn" onclick="startImageSwap('${section.id}','${ie.id}')">Swap</button>
-          <button class="delete-btn" onclick="deleteImage('${section.id}','${ie.id}')">Delete</button>
-        </div>
-        <div style="margin-top:6px;">
-          <input type="text" data-section="${section.id}" data-element="${ie.id}" data-type="alt"
-            oninput="handleAltEdit(this)" value="${escapeAttr(ie.alt)}" placeholder="Alt text">
-        </div>
-        ${changed ? `<button class="reset-btn" onclick="resetElement('${section.id}','${ie.id}','image')">Reset</button>` : ''}
-      </div>`;
+      html += '<div class="element-group' + (changed ? ' changed' : '') + '">';
+      html += '  <div class="el-label">';
+      html += '    <span class="el-tag">' + (ie.isBgImage ? 'background' : 'image') + '</span>';
+      html += (changed ? '    <span class="el-changed">Modified</span>' : '');
+      html += '  </div>';
+      html += '  <div style="display:flex;align-items:flex-start;gap:6px;">';
+      html += '    <div style="flex:1;">';
+      html += '      <div class="img-preview">';
+      html += '        <img src="' + imgSrc + '" alt="' + escapeAttr(ie.alt) + '" onerror="this.style.display=\'none\'">';
+      html += '        <div class="img-info">' + escapeHtml(ie.src.split('/').pop()) + '</div>';
+      html += '        <div style="margin:6px 0;display:flex;align-items:center;gap:8px;">';
+      html += '          <label style="font-size:11px;color:#888;white-space:nowrap;">Size:</label>';
+      html += '          <input type="range" min="20" max="200" step="10" value="' + ie.imageScale + '"';
+      html += '            style="flex:1;cursor:pointer;"';
+      html += '            oninput="handleImageScale(\'' + section.id + '\',\'' + ie.id + '\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'%\'">';
+      html += '          <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;' + (ie.imageScale !== ie.originalImageScale ? 'color:#e67e22;' : '') + '">' + ie.imageScale + '%</span>';
+      html += '        </div>';
+      html += '        <button class="swap-btn" onclick="startImageSwap(\'' + section.id + '\',\'' + ie.id + '\')">Swap</button>';
+      html += '        <button class="delete-btn" onclick="deleteImage(\'' + section.id + '\',\'' + ie.id + '\')">Delete</button>';
+      html += '      </div>';
+      html += '      <div style="margin-top:6px;">';
+      html += '        <input type="text" data-section="' + section.id + '" data-element="' + ie.id + '" data-type="alt"';
+      html += '          oninput="handleAltEdit(this)" value="' + escapeAttr(ie.alt) + '" placeholder="Alt text">';
+      html += '      </div>';
+      html += (changed ? '      <button class="reset-btn" onclick="resetElement(\'' + section.id + '\',\'' + ie.id + '\',\'image\')">Reset</button>' : '');
+      html += '    </div>';
+      html += '    <div class="reorder-btns">';
+      html += '      <button class="reorder-btn" onclick="moveImageElement(\'' + section.id + '\',\'' + ie.id + '\',-1)" ' + (visIdx === 0 ? 'disabled' : '') + ' title="Move up">&#9650;</button>';
+      html += '      <button class="reorder-btn" onclick="moveImageElement(\'' + section.id + '\',\'' + ie.id + '\',1)" ' + (visIdx === visibleImages.length - 1 ? 'disabled' : '') + ' title="Move down">&#9660;</button>';
+      html += '    </div>';
+      html += '  </div>';
+      html += '</div>';
+      // Insert point after this image
+      html += '<button class="insert-media-btn" onclick="startInsertMediaAfterImage(\'' + section.id + '\',\'' + ie.id + '\')">+ Insert media after this image</button>';
     }
   });
+
+  // Insert point before first added media
+  html += `<button class="insert-media-btn" onclick="startInsertMedia('${section.id}', 0)">+ Insert media here</button>`;
 
   // Added media items
   if (section.addedMedia && section.addedMedia.length > 0) {
@@ -1627,34 +1727,56 @@ function renderEditor() {
         <span class="el-changed">${section.addedMedia.length} new</span>
       </div>`;
 
+    // Match size bar
+    if (section.addedMedia.length > 1) {
+      const currentWidth = section.addedMedia[0].displayWidth || 100;
+      html += `<div class="match-size-bar">
+        <label>Set all to:</label>
+        <select onchange="setAllAddedMediaWidth('${section.id}', this.value)">
+          <option value="">--</option>
+          ${[100,75,66,55,50,33,25].map(w => '<option value="' + w + '">' + w + '% width</option>').join('')}
+        </select>
+      </div>`;
+    }
+
     section.addedMedia.forEach((am, i) => {
       const dw = am.displayWidth || 100;
-      const minPx = Math.round(dw * 12); // rough: 1200px at 100%, 600px at 50%, etc.
+      const minPx = Math.round(dw * 12);
       const tooSmall = am.width < minPx;
-      html += `<div class="added-media-item">
-        <img src="data:image/jpeg;base64,${am.base64}" alt="">
-        <div class="ami-details">
-          <div class="ami-dims">${am.width} × ${am.height}</div>
-          <select onchange="handleAddedMediaWidth('${section.id}','${am.id}',this.value)">
-            ${[100,75,66,55,50,33,25].map(w => `<option value="${w}"${w === dw ? ' selected' : ''}>${w}% width</option>`).join('')}
-          </select>
-          ${tooSmall ? `<div class="ami-warning">⚠ Image may appear soft at ${dw}% — only ${am.width}px wide (recommend ${minPx}px+)</div>` : ''}
-          <input type="text" value="${escapeAttr(am.alt)}" placeholder="Alt text"
-            oninput="handleAddedMediaAlt('${section.id}','${am.id}',this.value)">
+      html += `<div style="display:flex;align-items:flex-start;">
+        <div class="added-media-item" style="flex:1;">
+          <img src="data:image/jpeg;base64,${am.base64}" alt="">
+          <div class="ami-details">
+            <div class="ami-dims">${am.width} x ${am.height}</div>
+            <select onchange="handleAddedMediaWidth('${section.id}','${am.id}',this.value)">
+              ${[100,75,66,55,50,33,25].map(w => '<option value="' + w + '"' + (w === dw ? ' selected' : '') + '>' + w + '% width</option>').join('')}
+            </select>
+            ${tooSmall ? '<div class="ami-warning">Low res: only ' + am.width + 'px wide (recommend ' + minPx + 'px+)</div>' : ''}
+            <input type="text" value="${escapeAttr(am.alt)}" placeholder="Alt text"
+              oninput="handleAddedMediaAlt('${section.id}','${am.id}',this.value)">
+          </div>
+          <button class="ami-remove" onclick="removeAddedMedia('${section.id}','${am.id}')" title="Remove">x</button>
         </div>
-        <button class="ami-remove" onclick="removeAddedMedia('${section.id}','${am.id}')" title="Remove">×</button>
+        <div class="reorder-btns">
+          <button class="reorder-btn" onclick="moveAddedMedia('${section.id}','${am.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Move up">&#9650;</button>
+          <button class="reorder-btn" onclick="moveAddedMedia('${section.id}','${am.id}',1)" ${i === section.addedMedia.length - 1 ? 'disabled' : ''} title="Move down">&#9660;</button>
+        </div>
       </div>`;
+      // Insert point after each image
+      if (i < section.addedMedia.length - 1) {
+        html += `<button class="insert-media-btn" onclick="startInsertMedia('${section.id}', ${i + 1})">+ Insert media here</button>`;
+      }
     });
 
     // Layout hint
     const totalWidth = section.addedMedia.reduce((sum, am) => sum + (am.displayWidth || 100), 0);
-    const layoutHint = section.addedMedia.map(am => `${am.displayWidth || 100}%`).join(' + ');
+    const layoutHint = section.addedMedia.map(am => (am.displayWidth || 100) + '%').join(' + ');
     const wrapNote = totalWidth > 100 ? ' (will wrap to next row)' : '';
-    html += `<div class="ami-layout-hint">Layout: ${layoutHint}${wrapNote}</div>`;
-    html += `</div>`;
+    html += '<div class="ami-layout-hint">Layout: ' + layoutHint + wrapNote + '</div>';
+    html += '</div>';
   }
 
-  // Add Media button
+  // Add Media button (appends at end)
   html += `<button class="add-media-btn" onclick="startAddMedia('${section.id}')">+ Add Media</button>`;
 
   col.innerHTML = html;
@@ -1942,24 +2064,66 @@ function applyChanges() {
         container.className = 'added-media';
         container.setAttribute('style', 'display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem;');
 
+        // Group addedMedia by insertion point
+        const afterImageMedia = {};
+        const appendMedia = [];
         section.addedMedia.forEach(am => {
-          const dw = am.displayWidth || 100;
-          const wrapper = doc.createElement('div');
-          if (dw === 100) {
-            wrapper.setAttribute('style', 'width:100%;');
+          if (am.insertAfterImageId) {
+            if (!afterImageMedia[am.insertAfterImageId]) afterImageMedia[am.insertAfterImageId] = [];
+            afterImageMedia[am.insertAfterImageId].push(am);
           } else {
-            wrapper.setAttribute('style', `flex:0 0 calc(${dw}% - 0.5rem);max-width:calc(${dw}% - 0.5rem);`);
+            appendMedia.push(am);
           }
-          const img = doc.createElement('img');
-          // Use base64 for preview since file isn't on GitHub yet
-          img.setAttribute('src', am.base64 ? 'data:image/jpeg;base64,' + am.base64 : 'assets/' + am.fileName);
-          img.setAttribute('alt', am.alt || '');
-          img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
-          wrapper.appendChild(img);
-          container.appendChild(wrapper);
         });
 
-        sectionEl.appendChild(container);
+        // Insert media after specific images
+        Object.keys(afterImageMedia).forEach(imgId => {
+          const ie = section.imageElements.find(i => i.id === imgId);
+          if (!ie) return;
+          // Find the image element in the DOM by src
+          const imgs = sectionEl.querySelectorAll('img');
+          let targetImg = null;
+          for (const img of imgs) {
+            if (img.getAttribute('src') && img.getAttribute('src').includes(ie.src.split('/').pop())) {
+              targetImg = img;
+              break;
+            }
+          }
+          if (targetImg) {
+            const insertAfterEl = targetImg.closest('div') || targetImg;
+            afterImageMedia[imgId].forEach(am => {
+              const wrapper = doc.createElement('div');
+              const dw = am.displayWidth || 100;
+              wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+              const img = doc.createElement('img');
+              img.setAttribute('src', am.base64 ? 'data:image/jpeg;base64,' + am.base64 : 'assets/' + am.fileName);
+              img.setAttribute('alt', am.alt || '');
+              img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
+              wrapper.appendChild(img);
+              if (insertAfterEl.nextSibling) {
+                insertAfterEl.parentNode.insertBefore(wrapper, insertAfterEl.nextSibling);
+              } else {
+                insertAfterEl.parentNode.appendChild(wrapper);
+              }
+            });
+          }
+        });
+
+        // Append remaining media at end
+        if (appendMedia.length > 0) {
+          appendMedia.forEach(am => {
+            const dw = am.displayWidth || 100;
+            const wrapper = doc.createElement('div');
+            wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+            const img = doc.createElement('img');
+            img.setAttribute('src', am.base64 ? 'data:image/jpeg;base64,' + am.base64 : 'assets/' + am.fileName);
+            img.setAttribute('alt', am.alt || '');
+            img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
+            wrapper.appendChild(img);
+            container.appendChild(wrapper);
+          });
+          sectionEl.appendChild(container);
+        }
       } catch (e) { console.warn('Failed to add media to section:', section.id, e); }
     });
 
@@ -2093,24 +2257,65 @@ async function deploySite() {
         container.className = 'added-media';
         container.setAttribute('style', 'display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem;');
 
+        // Group addedMedia by insertion point
+        const afterImageMedia = {};
+        const appendMedia = [];
         section.addedMedia.forEach(am => {
-          const dw = am.displayWidth || 100;
-          const wrapper = doc.createElement('div');
-          // Subtract gap: use calc to account for flex gap
-          if (dw === 100) {
-            wrapper.setAttribute('style', 'width:100%;');
+          if (am.insertAfterImageId) {
+            if (!afterImageMedia[am.insertAfterImageId]) afterImageMedia[am.insertAfterImageId] = [];
+            afterImageMedia[am.insertAfterImageId].push(am);
           } else {
-            wrapper.setAttribute('style', `flex:0 0 calc(${dw}% - 0.5rem);max-width:calc(${dw}% - 0.5rem);`);
+            appendMedia.push(am);
           }
-          const img = doc.createElement('img');
-          img.setAttribute('src', 'assets/' + am.fileName);
-          img.setAttribute('alt', am.alt || '');
-          img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
-          wrapper.appendChild(img);
-          container.appendChild(wrapper);
         });
 
-        sectionEl.appendChild(container);
+        // Insert media after specific images
+        Object.keys(afterImageMedia).forEach(imgId => {
+          const ie = section.imageElements.find(i => i.id === imgId);
+          if (!ie) return;
+          const imgs = sectionEl.querySelectorAll('img');
+          let targetImg = null;
+          for (const img of imgs) {
+            if (img.getAttribute('src') && img.getAttribute('src').includes(ie.src.split('/').pop())) {
+              targetImg = img;
+              break;
+            }
+          }
+          if (targetImg) {
+            const insertAfterEl = targetImg.closest('div') || targetImg;
+            afterImageMedia[imgId].forEach(am => {
+              const wrapper = doc.createElement('div');
+              const dw = am.displayWidth || 100;
+              wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+              const img = doc.createElement('img');
+              img.setAttribute('src', 'assets/' + am.fileName);
+              img.setAttribute('alt', am.alt || '');
+              img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
+              wrapper.appendChild(img);
+              if (insertAfterEl.nextSibling) {
+                insertAfterEl.parentNode.insertBefore(wrapper, insertAfterEl.nextSibling);
+              } else {
+                insertAfterEl.parentNode.appendChild(wrapper);
+              }
+            });
+          }
+        });
+
+        // Append remaining media at end in container
+        if (appendMedia.length > 0) {
+          appendMedia.forEach(am => {
+            const dw = am.displayWidth || 100;
+            const wrapper = doc.createElement('div');
+            wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+            const img = doc.createElement('img');
+            img.setAttribute('src', 'assets/' + am.fileName);
+            img.setAttribute('alt', am.alt || '');
+            img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
+            wrapper.appendChild(img);
+            container.appendChild(wrapper);
+          });
+          sectionEl.appendChild(container);
+        }
       } catch (e) {
         console.warn('Failed to add media to section:', section.id, e);
       }
@@ -2274,6 +2479,8 @@ function backToSetup() {
 // ADD MEDIA
 // ==========================================
 let addMediaState = {
+  insertionIndex: -1, // -1 means append at end
+  insertAfterImageId: null, // which existing image this media follows
   targetSectionId: null,
   pendingSmallImages: [], // images awaiting resolution decision
   resolvingIndex: 0
@@ -2291,8 +2498,66 @@ function getLayoutHint(addedMedia) {
   return addedMedia.map(am => `${am.displayWidth || 100}%`).join(' + ');
 }
 
+
+// ==========================================
+// REORDER & INSERT POINT HANDLERS
+// ==========================================
+function moveImageElement(sectionId, elementId, direction) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const arr = section.imageElements;
+  const idx = arr.findIndex(ie => ie.id === elementId);
+  if (idx < 0) return;
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= arr.length) return;
+  [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function moveAddedMedia(sectionId, mediaId, direction) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section || !section.addedMedia) return;
+  const arr = section.addedMedia;
+  const idx = arr.findIndex(am => am.id === mediaId);
+  if (idx < 0) return;
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= arr.length) return;
+  [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function setAllAddedMediaWidth(sectionId, width) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section || !section.addedMedia) return;
+  const w = parseInt(width);
+  section.addedMedia.forEach(am => { am.displayWidth = w; });
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function startInsertMediaAfterImage(sectionId, imageId) {
+  addMediaState.targetSectionId = sectionId;
+  addMediaState.insertionIndex = 0; // Will be added at start of addedMedia
+  addMediaState.insertAfterImageId = imageId;
+  document.getElementById('addMediaChooser').click();
+}
+
+function startInsertMedia(sectionId, index) {
+  addMediaState.insertAfterImageId = null;
+  addMediaState.targetSectionId = sectionId;
+  addMediaState.insertionIndex = index;
+  document.getElementById('addMediaChooser').click();
+}
+
 function startAddMedia(sectionId) {
   addMediaState.targetSectionId = sectionId;
+  addMediaState.insertionIndex = -1;
+  addMediaState.insertAfterImageId = null;
   document.getElementById('addMediaChooser').click();
 }
 
@@ -2325,13 +2590,19 @@ document.getElementById('addMediaChooser').addEventListener('change', function(e
           height: h,
           alt: '',
           sizeClass: sizeClass,
-          displayWidth: defaultWidth
+          displayWidth: defaultWidth,
+          insertAfterImageId: addMediaState.insertAfterImageId || null
         };
 
         if (sizeClass === 'small') {
           toResolve.push(mediaItem);
         } else {
-          section.addedMedia.push(mediaItem);
+          if (addMediaState.insertionIndex >= 0 && addMediaState.insertionIndex <= section.addedMedia.length) {
+            section.addedMedia.splice(addMediaState.insertionIndex, 0, mediaItem);
+            addMediaState.insertionIndex++;
+          } else {
+            section.addedMedia.push(mediaItem);
+          }
         }
 
         processed++;
@@ -2381,7 +2652,14 @@ function resModalAction(action) {
   if (action === 'grid') {
     // Add at 33% width and prompt for more
     current.displayWidth = 33;
-    if (section) section.addedMedia.push(current);
+    if (section) {
+      if (addMediaState.insertionIndex >= 0 && addMediaState.insertionIndex <= section.addedMedia.length) {
+        section.addedMedia.splice(addMediaState.insertionIndex, 0, current);
+        addMediaState.insertionIndex++;
+      } else {
+        section.addedMedia.push(current);
+      }
+    }
     advanceResModal();
     // After resolving all, open chooser for more
     if (addMediaState.resolvingIndex >= pending.length) {
@@ -2398,7 +2676,14 @@ function resModalAction(action) {
   if (action === 'anyway') {
     // Add at 25% width with warning
     current.displayWidth = 25;
-    if (section) section.addedMedia.push(current);
+    if (section) {
+      if (addMediaState.insertionIndex >= 0 && addMediaState.insertionIndex <= section.addedMedia.length) {
+        section.addedMedia.splice(addMediaState.insertionIndex, 0, current);
+        addMediaState.insertionIndex++;
+      } else {
+        section.addedMedia.push(current);
+      }
+    }
     advanceResModal();
     return;
   }
