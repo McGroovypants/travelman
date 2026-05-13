@@ -246,7 +246,11 @@ body {
 }
 .section-card:hover { background: var(--surface2); }
 .section-card.active { background: var(--surface2); border-left: 3px solid var(--gold); }
-.section-card .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.section-card .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.section-card .name-input { flex: 1; background: var(--surface2); border: 1px solid var(--gold); color: var(--text); font-size: 13px; padding: 2px 6px; border-radius: 4px; outline: none; }
+.section-name-edit { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.section-name-edit:hover .edit-icon { opacity: 1; }
+.section-name-edit .edit-icon { opacity: 0.3; font-size: 12px; transition: opacity 0.2s; }
 .section-card .badge {
   background: var(--orange);
   color: var(--bg);
@@ -1439,9 +1443,20 @@ function parseHtml(html) {
       if (pbMatch) parsedPaddingBottom = parseInt(pbMatch[1], 10);
       if (gapMatch) parsedElementGap = parseInt(gapMatch[1], 10);
 
+      // Find which text element matches the heading (for rename linkage)
+      let nameElementId = null;
+      if (heading) {
+        const headingSelector = buildSelector(heading);
+        const headingText = heading.textContent.replace(/\s+/g, ' ').trim();
+        const match = textElements.find(te => te.selector === headingSelector || te.content === headingText);
+        if (match) nameElementId = match.id;
+      }
+
       sections.push({
         id,
         name,
+        originalName: name,
+        nameElementId,
         tag,
         textElements,
         imageElements,
@@ -1544,7 +1559,7 @@ function renderSections() {
 
     const addedCount = section.addedMedia ? section.addedMedia.length : 0;
     let html = `<div>
-      <div class="name">${escapeHtml(section.name)}</div>
+      <div class="name" ondblclick="startSectionRename(event, '${section.id}')" title="Double-click to rename">${escapeHtml(section.name)}</div>
       <div class="meta">${section.textElements.length}T ${section.imageElements.length}I${addedCount > 0 ? ' +' + addedCount + 'M' : ''}</div>
     </div>`;
     if (changes > 0) {
@@ -1557,6 +1572,7 @@ function renderSections() {
 
 function countSectionChanges(section) {
   let count = 0;
+  if (section.name !== section.originalName) count++;
   section.textElements.forEach(te => {
     if (te.content !== te.originalContent) count++;
     if (te.fontSize !== te.originalFontSize) count++;
@@ -1594,7 +1610,12 @@ function renderEditor() {
     return;
   }
 
-  let html = `<h3>${escapeHtml(section.name)}</h3>`;
+  const nameChanged = section.name !== section.originalName;
+  let html = `<h3 class="section-name-edit" onclick="startSectionRenamePanel('${section.id}')">
+    <span id="section-name-display-${section.id}">${escapeHtml(section.name)}</span>
+    <span class="edit-icon">&#9998;</span>
+    ${nameChanged ? '<span class="el-changed" style="font-size:10px;margin-left:6px;">Renamed</span>' : ''}
+  </h3>`;
 
   // Section spacing controls (top, so always visible on section select)
   html += `<div class="spacing-controls">
@@ -1977,6 +1998,97 @@ function updateChangeCount() {
 // ==========================================
 // APPLY (preview only, no deploy)
 // ==========================================
+// ==========================================
+// SECTION RENAME
+// ==========================================
+function startSectionRename(event, sectionId) {
+  event.stopPropagation();
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+
+  const nameDiv = event.target;
+  const currentName = section.name;
+  const input = document.createElement('input');
+  input.className = 'name-input';
+  input.value = currentName;
+  input.onclick = (e) => e.stopPropagation();
+
+  function commitRename() {
+    const newName = input.value.trim();
+    if (newName && newName !== currentName) {
+      applySectionRename(sectionId, newName);
+    }
+    renderSections();
+    renderEditor();
+  }
+
+  input.onblur = commitRename;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = currentName; input.blur(); }
+  };
+
+  nameDiv.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+function startSectionRenamePanel(sectionId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+
+  const display = document.getElementById('section-name-display-' + sectionId);
+  if (!display) return;
+
+  const parent = display.closest('.section-name-edit');
+  const currentName = section.name;
+  const input = document.createElement('input');
+  input.className = 'name-input';
+  input.value = currentName;
+  input.style.fontSize = '16px';
+  input.style.fontWeight = 'bold';
+  input.style.width = '100%';
+
+  function commitRename() {
+    const newName = input.value.trim();
+    if (newName && newName !== currentName) {
+      applySectionRename(sectionId, newName);
+    }
+    renderSections();
+    renderEditor();
+  }
+
+  input.onblur = commitRename;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = currentName; input.blur(); }
+  };
+
+  parent.innerHTML = '';
+  parent.appendChild(input);
+  parent.onclick = null;
+  input.focus();
+  input.select();
+}
+
+function applySectionRename(sectionId, newName) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+
+  section.name = newName;
+
+  // Also update the linked text element so the heading changes in the HTML
+  if (section.nameElementId) {
+    const te = section.textElements.find(t => t.id === section.nameElementId);
+    if (te) {
+      te.content = newName;
+      te.innerHTML = escapeHtml(newName);
+    }
+  }
+
+  checkApplyButton();
+}
+
 function applyChanges() {
   const btn = document.getElementById('applyBtn');
   btn.disabled = true;
