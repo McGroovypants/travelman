@@ -1659,6 +1659,21 @@ function renderEditor() {
   });
 
   // Image elements
+  // Group addedMedia by insertAfterImageId for inline rendering
+  const mediaByImageId = {};
+  const unassociatedMedia = [];
+  if (section.addedMedia && section.addedMedia.length > 0) {
+    section.addedMedia.forEach((am, i) => {
+      am._globalIdx = i;
+      if (am.insertAfterImageId) {
+        if (!mediaByImageId[am.insertAfterImageId]) mediaByImageId[am.insertAfterImageId] = [];
+        mediaByImageId[am.insertAfterImageId].push(am);
+      } else {
+        unassociatedMedia.push(am);
+      }
+    });
+  }
+
   const visibleImages = section.imageElements.filter(x => !x.deleted);
   section.imageElements.forEach((ie, i) => {
     const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale;
@@ -1713,66 +1728,72 @@ function renderEditor() {
       html += '</div>';
       // Insert point after this image
       html += '<button class="insert-media-btn" onclick="startInsertMediaAfterImage(\'' + section.id + '\',\'' + ie.id + '\')">+ Insert media after this image</button>';
+
+      // Render any addedMedia associated with this image inline
+      if (mediaByImageId[ie.id]) {
+        mediaByImageId[ie.id].forEach(am => {
+          const dw = am.displayWidth || 100;
+          const minPx = Math.round(dw * 12);
+          const tooSmall = am.width < minPx;
+          html += '<div class="element-group changed" style="margin:4px 0;border-left:3px solid #e67e22;">';
+          html += '  <div class="el-label"><span class="el-tag" style="background:#e67e22;">New image</span></div>';
+          html += '  <div style="display:flex;align-items:flex-start;gap:6px;">';
+          html += '    <div class="added-media-item" style="flex:1;">';
+          html += '      <img src="data:image/jpeg;base64,' + am.base64 + '" alt="">';
+          html += '      <div class="ami-details">';
+          html += '        <div class="ami-dims">' + am.width + ' x ' + am.height + '</div>';
+          html += '        <select onchange="handleAddedMediaWidth(\'' + section.id + '\',\'' + am.id + '\',this.value)">';
+          [100,75,66,55,50,33,25].forEach(w => {
+            html += '<option value="' + w + '"' + (w === dw ? ' selected' : '') + '>' + w + '% width</option>';
+          });
+          html += '        </select>';
+          if (tooSmall) html += '<div class="ami-warning">Low res: only ' + am.width + 'px wide (recommend ' + minPx + 'px+)</div>';
+          html += '        <input type="text" value="' + escapeAttr(am.alt) + '" placeholder="Alt text"';
+          html += '          oninput="handleAddedMediaAlt(\'' + section.id + '\',\'' + am.id + '\',this.value)">';
+          html += '      </div>';
+          html += '      <button class="ami-remove" onclick="removeAddedMedia(\'' + section.id + '\',\'' + am.id + '\')" title="Remove">x</button>';
+          html += '    </div>';
+          html += '  </div>';
+          html += '</div>';
+        });
+      }
     }
   });
 
-  // Insert point before first added media
-  html += `<button class="insert-media-btn" onclick="startInsertMedia('${section.id}', 0)">+ Insert media here</button>`;
+  // Unassociated added media (added via "Add Media" button, no specific position)
+  if (unassociatedMedia.length > 0) {
+    html += '<div class="element-group changed">';
+    html += '  <div class="el-label">';
+    html += '    <span class="el-tag">Added Media</span>';
+    html += '    <span class="el-changed">' + unassociatedMedia.length + ' new (appended at end)</span>';
+    html += '  </div>';
 
-  // Added media items
-  if (section.addedMedia && section.addedMedia.length > 0) {
-    html += `<div class="element-group changed">
-      <div class="el-label">
-        <span class="el-tag">Added Media</span>
-        <span class="el-changed">${section.addedMedia.length} new</span>
-      </div>`;
-
-    // Match size bar
-    if (section.addedMedia.length > 1) {
-      const currentWidth = section.addedMedia[0].displayWidth || 100;
-      html += `<div class="match-size-bar">
-        <label>Set all to:</label>
-        <select onchange="setAllAddedMediaWidth('${section.id}', this.value)">
-          <option value="">--</option>
-          ${[100,75,66,55,50,33,25].map(w => '<option value="' + w + '">' + w + '% width</option>').join('')}
-        </select>
-      </div>`;
-    }
-
-    section.addedMedia.forEach((am, i) => {
+    unassociatedMedia.forEach((am, i) => {
       const dw = am.displayWidth || 100;
       const minPx = Math.round(dw * 12);
       const tooSmall = am.width < minPx;
-      html += `<div style="display:flex;align-items:flex-start;">
-        <div class="added-media-item" style="flex:1;">
-          <img src="data:image/jpeg;base64,${am.base64}" alt="">
-          <div class="ami-details">
-            <div class="ami-dims">${am.width} x ${am.height}</div>
-            <select onchange="handleAddedMediaWidth('${section.id}','${am.id}',this.value)">
-              ${[100,75,66,55,50,33,25].map(w => '<option value="' + w + '"' + (w === dw ? ' selected' : '') + '>' + w + '% width</option>').join('')}
-            </select>
-            ${tooSmall ? '<div class="ami-warning">Low res: only ' + am.width + 'px wide (recommend ' + minPx + 'px+)</div>' : ''}
-            <input type="text" value="${escapeAttr(am.alt)}" placeholder="Alt text"
-              oninput="handleAddedMediaAlt('${section.id}','${am.id}',this.value)">
-          </div>
-          <button class="ami-remove" onclick="removeAddedMedia('${section.id}','${am.id}')" title="Remove">x</button>
-        </div>
-        <div class="reorder-btns">
-          <button class="reorder-btn" onclick="moveAddedMedia('${section.id}','${am.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Move up">&#9650;</button>
-          <button class="reorder-btn" onclick="moveAddedMedia('${section.id}','${am.id}',1)" ${i === section.addedMedia.length - 1 ? 'disabled' : ''} title="Move down">&#9660;</button>
-        </div>
-      </div>`;
-      // Insert point after each image
-      if (i < section.addedMedia.length - 1) {
-        html += `<button class="insert-media-btn" onclick="startInsertMedia('${section.id}', ${i + 1})">+ Insert media here</button>`;
-      }
+      html += '<div style="display:flex;align-items:flex-start;">';
+      html += '  <div class="added-media-item" style="flex:1;">';
+      html += '    <img src="data:image/jpeg;base64,' + am.base64 + '" alt="">';
+      html += '    <div class="ami-details">';
+      html += '      <div class="ami-dims">' + am.width + ' x ' + am.height + '</div>';
+      html += '      <select onchange="handleAddedMediaWidth(\'' + section.id + '\',\'' + am.id + '\',this.value)">';
+      [100,75,66,55,50,33,25].forEach(w => {
+        html += '<option value="' + w + '"' + (w === dw ? ' selected' : '') + '>' + w + '% width</option>';
+      });
+      html += '      </select>';
+      if (tooSmall) html += '<div class="ami-warning">Low res: only ' + am.width + 'px wide (recommend ' + minPx + 'px+)</div>';
+      html += '      <input type="text" value="' + escapeAttr(am.alt) + '" placeholder="Alt text"';
+      html += '        oninput="handleAddedMediaAlt(\'' + section.id + '\',\'' + am.id + '\',this.value)">';
+      html += '    </div>';
+      html += '    <button class="ami-remove" onclick="removeAddedMedia(\'' + section.id + '\',\'' + am.id + '\')" title="Remove">x</button>';
+      html += '  </div>';
+      html += '  <div class="reorder-btns">';
+      html += '    <button class="reorder-btn" onclick="moveAddedMedia(\'' + section.id + '\',\'' + am.id + '\',-1)" ' + (i === 0 ? 'disabled' : '') + ' title="Move up">&#9650;</button>';
+      html += '    <button class="reorder-btn" onclick="moveAddedMedia(\'' + section.id + '\',\'' + am.id + '\',1)" ' + (i === unassociatedMedia.length - 1 ? 'disabled' : '') + ' title="Move down">&#9660;</button>';
+      html += '  </div>';
+      html += '</div>';
     });
-
-    // Layout hint
-    const totalWidth = section.addedMedia.reduce((sum, am) => sum + (am.displayWidth || 100), 0);
-    const layoutHint = section.addedMedia.map(am => (am.displayWidth || 100) + '%').join(' + ');
-    const wrapNote = totalWidth > 100 ? ' (will wrap to next row)' : '';
-    html += '<div class="ami-layout-hint">Layout: ' + layoutHint + wrapNote + '</div>';
     html += '</div>';
   }
 
