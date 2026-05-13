@@ -861,6 +861,11 @@ const SITE_CREDS = [
   { hash: 'ad1454c7b344ab6c524d0164f993e110f18ab9e9b13bd6f96667875fa335f6e9', encPat: 'BciL7noolZpOBKlAubn5GSd1AR+my/AFmFZQulncsSYrx+9Z1fjrdtozWsyrSq59ZXzgutauysD6iIphI2GSUJsUyPFdD+nNMXSYGJt1zv17wyKv' }
 ];
 
+// Custom domain → GitHub owner/repo mapping
+const CUSTOM_DOMAINS = {
+  'travelman.nz': { owner: 'McGroovypants', repo: 'travelman' }
+};
+
 async function decryptPat(accessCode, encPat) {
   const blob = Uint8Array.from(atob(encPat), c => c.charCodeAt(0));
   const salt = blob.slice(0, 16);
@@ -873,13 +878,17 @@ async function decryptPat(accessCode, encPat) {
 }
 
 function parseGithubPagesUrl(url) {
-  // Handles https://owner.github.io/repo/ or https://owner.github.io/repo
+  // Handles https://owner.github.io/repo/, custom domains, or bare domain
   try {
     const u = new URL(url.trim());
+    // Check custom domains first
+    const domainKey = u.hostname.replace(/^www\./, '');
+    if (CUSTOM_DOMAINS[domainKey]) return CUSTOM_DOMAINS[domainKey];
+    // Standard GitHub Pages URL
     const hostParts = u.hostname.split('.');
     if (hostParts.length < 3 || hostParts[1] !== 'github' || hostParts[2] !== 'io') return null;
     const owner = hostParts[0];
-    const repo = u.pathname.replace(/^\/|\/$/g, ''); // strip leading/trailing slashes
+    const repo = u.pathname.replace(/^\/|\/$/g, '');
     return { owner, repo: repo || '' };
   } catch (e) { return null; }
 }
@@ -906,6 +915,15 @@ async function sha256(text) {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Returns the live site URL, preferring custom domain if one exists
+function getSiteBaseUrl() {
+  const match = Object.entries(CUSTOM_DOMAINS).find(([domain, info]) =>
+    info.owner === state.owner && info.repo === state.repo
+  );
+  if (match) return `https://${match[0]}/`;
+  return `https://${state.owner}.github.io/${state.repo}/`;
 }
 
 function show(id) {
@@ -936,7 +954,11 @@ document.getElementById('siteUrlInput').addEventListener('keydown', e => {
 // Auto-detect site URL from current page location
 (function() {
   const loc = window.location;
-  if (loc.hostname.endsWith('.github.io')) {
+  const domainKey = loc.hostname.replace(/^www\./, '');
+  if (CUSTOM_DOMAINS[domainKey]) {
+    // Custom domain: site URL is the root domain
+    document.getElementById('siteUrlInput').value = `${loc.protocol}//${loc.hostname}/`;
+  } else if (loc.hostname.endsWith('.github.io')) {
     const parts = loc.pathname.split('/').filter(Boolean);
     // If we're at /reponame/editor/, the site URL is /reponame/
     if (parts.length >= 1) {
@@ -1047,7 +1069,7 @@ const PREVIEW_BRIDGE = `<script>
 function loadBlobPreview(html) {
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
 
-  const baseUrl = `https://${state.owner}.github.io/${state.repo}/`;
+  const baseUrl = getSiteBaseUrl();
 
   // Inject <base> tag and postMessage bridge
   let processed = html;
@@ -1335,10 +1357,10 @@ async function loadSiteAuto() {
     state.selectedSectionId = state.sections.length > 0 ? state.sections[0].id : null;
 
     // Setup preview — blob URL for instant rendering
-    const siteUrl = `https://${state.owner}.github.io/${state.repo}/`;
+    const siteUrl = getSiteBaseUrl();
     document.getElementById('previewLink').href = siteUrl;
     loadBlobPreview(content);
-    document.getElementById('siteLabel').textContent = `${state.owner}/${state.repo}`;
+    document.getElementById('siteLabel').textContent = siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
     renderSections();
     renderEditor();
@@ -1558,8 +1580,8 @@ function renderEditor() {
 
 function resolveImageUrl(src) {
   if (src.startsWith('http')) return src;
-  // Resolve relative to GitHub Pages
-  return `https://${state.owner}.github.io/${state.repo}/${src.replace(/^\.\//, '')}`;
+  // Resolve relative to site base URL
+  return getSiteBaseUrl() + src.replace(/^\.\//, '');
 }
 
 // ==========================================
@@ -2110,7 +2132,7 @@ function showToast(message, duration = 5000) {
 }
 
 async function checkLiveStatus(deployMarker) {
-  const liveUrl = `https://${state.owner}.github.io/${state.repo}/`;
+  const liveUrl = getSiteBaseUrl();
   const maxAttempts = 20; // ~60 seconds
   let attempt = 0;
 
