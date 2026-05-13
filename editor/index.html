@@ -2113,14 +2113,20 @@ function applyChanges() {
           if (targetImg) {
             const insertAfterEl = targetImg.closest('div') || targetImg;
             afterImageMedia[imgId].forEach(am => {
-              const wrapper = doc.createElement('div');
-              const dw = am.displayWidth || 100;
-              wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+              // Clone sibling structure so new image matches the gallery layout
+              const wrapper = insertAfterEl.cloneNode(false);
+              wrapper.removeAttribute('id');
               const img = doc.createElement('img');
               img.setAttribute('src', am.base64 ? 'data:image/jpeg;base64,' + am.base64 : 'assets/' + am.fileName);
               img.setAttribute('alt', am.alt || '');
-              img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
               wrapper.appendChild(img);
+              // Clone caption structure if sibling has one
+              const origCaption = insertAfterEl.querySelector('.caption, [class*="caption"], figcaption');
+              if (origCaption) {
+                const cap = origCaption.cloneNode(false);
+                cap.textContent = am.alt || '';
+                wrapper.appendChild(cap);
+              }
               if (insertAfterEl.nextSibling) {
                 insertAfterEl.parentNode.insertBefore(wrapper, insertAfterEl.nextSibling);
               } else {
@@ -2132,18 +2138,35 @@ function applyChanges() {
 
         // Append remaining media at end
         if (appendMedia.length > 0) {
+          // Find a gallery item to clone structure from
+          const galleryItems = sectionEl.querySelectorAll('img');
+          const templateEl = galleryItems.length > 0 ? (galleryItems[0].closest('div[class]') || galleryItems[0].parentElement) : null;
           appendMedia.forEach(am => {
-            const dw = am.displayWidth || 100;
-            const wrapper = doc.createElement('div');
-            wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+            let wrapper;
+            if (templateEl) {
+              wrapper = templateEl.cloneNode(false);
+              wrapper.removeAttribute('id');
+            } else {
+              wrapper = doc.createElement('div');
+            }
             const img = doc.createElement('img');
             img.setAttribute('src', am.base64 ? 'data:image/jpeg;base64,' + am.base64 : 'assets/' + am.fileName);
             img.setAttribute('alt', am.alt || '');
-            img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
             wrapper.appendChild(img);
-            container.appendChild(wrapper);
+            if (templateEl) {
+              const origCaption = templateEl.querySelector('.caption, [class*="caption"], figcaption');
+              if (origCaption) {
+                const cap = origCaption.cloneNode(false);
+                cap.textContent = am.alt || '';
+                wrapper.appendChild(cap);
+              }
+              // Insert into the same parent as existing gallery items
+              templateEl.parentNode.appendChild(wrapper);
+            } else {
+              container.appendChild(wrapper);
+            }
           });
-          sectionEl.appendChild(container);
+          if (!templateEl) sectionEl.appendChild(container);
         }
       } catch (e) { console.warn('Failed to add media to section:', section.id, e); }
     });
@@ -2305,14 +2328,20 @@ async function deploySite() {
           if (targetImg) {
             const insertAfterEl = targetImg.closest('div') || targetImg;
             afterImageMedia[imgId].forEach(am => {
-              const wrapper = doc.createElement('div');
-              const dw = am.displayWidth || 100;
-              wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+              // Clone sibling structure so new image matches the gallery layout
+              const wrapper = insertAfterEl.cloneNode(false);
+              wrapper.removeAttribute('id');
               const img = doc.createElement('img');
               img.setAttribute('src', 'assets/' + am.fileName);
               img.setAttribute('alt', am.alt || '');
-              img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
               wrapper.appendChild(img);
+              // Clone caption structure if sibling has one
+              const origCaption = insertAfterEl.querySelector('.caption, [class*="caption"], figcaption');
+              if (origCaption) {
+                const cap = origCaption.cloneNode(false);
+                cap.textContent = am.alt || '';
+                wrapper.appendChild(cap);
+              }
               if (insertAfterEl.nextSibling) {
                 insertAfterEl.parentNode.insertBefore(wrapper, insertAfterEl.nextSibling);
               } else {
@@ -2324,18 +2353,34 @@ async function deploySite() {
 
         // Append remaining media at end in container
         if (appendMedia.length > 0) {
+          // Find a gallery item to clone structure from
+          const galleryItems = sectionEl.querySelectorAll('img');
+          const templateEl = galleryItems.length > 0 ? (galleryItems[0].closest('div[class]') || galleryItems[0].parentElement) : null;
           appendMedia.forEach(am => {
-            const dw = am.displayWidth || 100;
-            const wrapper = doc.createElement('div');
-            wrapper.setAttribute('style', dw === 100 ? 'width:100%;' : 'flex:0 0 calc(' + dw + '% - 0.5rem);max-width:calc(' + dw + '% - 0.5rem);');
+            let wrapper;
+            if (templateEl) {
+              wrapper = templateEl.cloneNode(false);
+              wrapper.removeAttribute('id');
+            } else {
+              wrapper = doc.createElement('div');
+            }
             const img = doc.createElement('img');
             img.setAttribute('src', 'assets/' + am.fileName);
             img.setAttribute('alt', am.alt || '');
-            img.setAttribute('style', 'width:100%;border-radius:8px;object-fit:cover;');
             wrapper.appendChild(img);
-            container.appendChild(wrapper);
+            if (templateEl) {
+              const origCaption = templateEl.querySelector('.caption, [class*="caption"], figcaption');
+              if (origCaption) {
+                const cap = origCaption.cloneNode(false);
+                cap.textContent = am.alt || '';
+                wrapper.appendChild(cap);
+              }
+              templateEl.parentNode.appendChild(wrapper);
+            } else {
+              container.appendChild(wrapper);
+            }
           });
-          sectionEl.appendChild(container);
+          if (!templateEl) sectionEl.appendChild(container);
         }
       } catch (e) {
         console.warn('Failed to add media to section:', section.id, e);
