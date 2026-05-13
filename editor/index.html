@@ -1115,7 +1115,12 @@ const PREVIEW_BRIDGE = `<script>
       if (el) el.setAttribute('alt', d.value);
     } else if (d.type === 'updateDisplay') {
       var el = document.querySelector(d.selector);
-      if (el) el.style.display = d.value;
+      if (el) {
+        // Hide/show the parent wrapper (strip-item), not just the img
+        var wrapper = el.closest('.strip-item') || el.closest('div');
+        var target = (wrapper && wrapper !== document.body) ? wrapper : el;
+        target.style.display = d.value;
+      }
     } else if (d.type === 'updateFontSize') {
       var el = document.querySelector(d.selector);
       if (el) el.style.fontSize = d.value + 'px';
@@ -2053,7 +2058,21 @@ function applyChanges() {
         try {
           const el = doc.querySelector(ie.selector);
           if (!el) return;
-          if (ie.deleted) { el.remove(); return; }
+          if (ie.deleted) {
+            // Remove parent wrapper (strip-item), not just the img
+            if (!ie.isBgImage) {
+              var wrapper = el.closest('.strip-item') || el.closest('div');
+              var sectionEl = doc.querySelector(section.outerSelector);
+              if (wrapper && wrapper !== doc.body && wrapper !== sectionEl) {
+                wrapper.remove();
+              } else {
+                el.remove();
+              }
+            } else {
+              el.remove();
+            }
+            return;
+          }
           if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
@@ -2275,7 +2294,21 @@ async function deploySite() {
         try {
           const el = doc.querySelector(ie.selector);
           if (!el) return;
-          if (ie.deleted) { el.remove(); return; }
+          if (ie.deleted) {
+            // Remove parent wrapper (strip-item), not just the img
+            if (!ie.isBgImage) {
+              var wrapper = el.closest('.strip-item') || el.closest('div');
+              var sectionEl = doc.querySelector(section.outerSelector);
+              if (wrapper && wrapper !== doc.body && wrapper !== sectionEl) {
+                wrapper.remove();
+              } else {
+                el.remove();
+              }
+            } else {
+              el.remove();
+            }
+            return;
+          }
           if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
