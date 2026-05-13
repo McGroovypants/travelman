@@ -1,9 +1,10 @@
-<!DOCTYPE html>
-<html lang="en"><head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TRAVELMAN – by Jerry Bridge</title>
-  <link href="https://cdn.jsdelivr.net/npm/inter-ui@4.1.0/inter.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/inter-ui@4.1.0/inter.min.css" rel="stylesheet" />
   <style>
     :root {
       --navy: #0a1628;
@@ -404,6 +405,54 @@
     }
     .quote-block cite { color: var(--gold); font-size: 0.85rem; font-style: normal; letter-spacing: 0.1em; }
 
+    /* === CONTACT ME === */
+    .contact-me {
+      padding: 6rem 2rem;
+      background: var(--navy-light);
+      text-align: center;
+    }
+    .contact-me-box {
+      max-width: 580px;
+      margin: 0 auto;
+      border: 1px solid rgba(201, 148, 74, 0.4);
+      padding: 3.5rem 3rem;
+      background: rgba(10, 22, 40, 0.6);
+    }
+    .contact-me-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1.2rem;
+      color: var(--gold);
+    }
+    .contact-me h2 {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 300;
+      color: var(--cream);
+      margin-bottom: 1rem;
+      letter-spacing: 0.05em;
+    }
+    .contact-me p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 2rem;
+      line-height: 1.7;
+    }
+    .contact-me-btn {
+      display: inline-block;
+      padding: 1rem 2.8rem;
+      background: var(--gold);
+      color: var(--navy);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      transition: background 0.3s, transform 0.2s;
+    }
+    .contact-me-btn:hover {
+      background: var(--gold-light);
+      transform: translateY(-2px);
+    }
+
     /* === FOOTER === */
     footer {
       padding: 3rem 2rem; text-align: center;
@@ -431,7 +480,7 @@
     }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
   </style>
-<!--deploy-1778559443089--><!--deploy-1778559728949--><!--deploy-1778583050167--><!--deploy-1778583394735--><!--deploy-1778635310231--><!--deploy-1778635850530--></head>
+</head>
 <body>
 
   <!-- NAV -->
@@ -449,7 +498,7 @@
   <!-- HERO -->
   <section class="hero">
     <div class="hero-content">
-      <p class="hero-subtitle">A memoir of travel, business &amp; ambition</p>
+      <p class="hero-subtitle">A memoir of travel, business & ambition</p>
       <h1>TRAVELMAN</h1>
       <p class="hero-author">by Jerry Bridge</p>
       <p class="hero-tagline">
@@ -459,7 +508,7 @@
       </p>
       <div class="hero-book-cta">
         <div class="hero-book-cover">
-          <img src="assets/jerry-bridge-travelman-mock-2.png" alt="Travelman by Jerry Bridge — front cover">
+          <img src="assets/travelman-cover.jpg" alt="Travelman by Jerry Bridge — front cover">
         </div>
         <div class="hero-book-buy">
           <h3>Buy the Book</h3>
@@ -478,7 +527,7 @@
   <!-- HOOK -->
   <section class="hook" id="about">
     <p class="section-label">The Book</p>
-    <h2 class="section-title">From Backpacker to Business Entrepreneur</h2>
+    <h2 class="section-title">From Backpacker to Business Builder</h2>
     <div class="hook-text">
       <p>
         In the 1980s, long before online booking and budget airlines, Jerry Bridge set out
@@ -506,39 +555,39 @@
     <div class="strip-scroll">
 
       <div class="strip-item">
-        <img src="./assets/london-travel.jpg" alt="London Travel Service 1970">
+        <img src="./assets/london-travel.jpg" alt="London Travel Service 1970" />
         <div class="caption">London Travel Service, 1970/71</div>
       </div>
       <div class="strip-item">
-        <img src="./assets/swiss-holidays.jpg" alt="Swiss Holidays">
+        <img src="./assets/swiss-holidays.jpg" alt="Swiss Holidays" />
         <div class="caption">Swiss Holidays — the family legacy</div>
       </div>
       <div class="strip-item">
-        <img src="./assets/switzerland.jpg" alt="Switzerland brochure">
+        <img src="./assets/switzerland.jpg" alt="Switzerland brochure" />
         <div class="caption">Vintage Switzerland travel brochure</div>
       </div>
 
 
       <div class="strip-item">
-        <img src="./assets/majorca.jpg" alt="Majorca holidays">
+        <img src="./assets/majorca.jpg" alt="Majorca holidays" />
         <div class="caption">"Rent a Flat in Majorca" — 15 days from £34</div>
       </div>
 
 
       <div class="strip-item">
-        <img src="./assets/jerry-david.jpg" alt="Jerry and David">
+        <img src="./assets/jerry-david.jpg" alt="Jerry and David" />
         <div class="caption">Jerry &amp; David — partners in travel</div>
       </div>
       <div class="strip-item">
-        <img src="./assets/launch-party.jpg" alt="Launch party">
+        <img src="./assets/launch-party.jpg" alt="Launch party" />
         <div class="caption">The launch party — celebrating a milestone</div>
       </div>
       <div class="strip-item">
-        <img src="./assets/early-team.jpg" alt="The early team">
+        <img src="./assets/early-team.jpg" alt="The early team" />
         <div class="caption">The early team — building the dream together</div>
       </div>
       <div class="strip-item">
-        <img src="./assets/piccadilly-award.jpg" alt="Piccadilly tourism award">
+        <img src="./assets/piccadilly-award.jpg" alt="Piccadilly tourism award" />
         <div class="caption">Service to tourism — Piccadilly, 1973</div>
       </div>
 
@@ -557,18 +606,21 @@
   <!-- JOURNEY TIMELINE -->
   <section class="timeline" id="journey">
     <p class="section-label">The Journey</p>
-    <h2 class="section-title">Twenty Years of Risk, Travel &amp; Ambition</h2>
+    <h2 class="section-title">Twenty Years of Risk, Travel & Ambition</h2>
 
     <div class="timeline-item fade-in">
       <div class="tl-content">
         <p class="tl-year">The Beginning</p>
-        <h3 class="tl-heading" style="font-size: 26px;">A Father's Legacy</h3>
-        <p class="tl-text" style="color: rgb(215, 215, 215);">Jerry's father, Walter  Bridge, was an early pioneer of UK travel. His company, Swiss Travel Service, established in 1949, was among the first to offer holidays to everyday people after the Second World War. He encouraged Jerry to buy his first backpack and go hitch-hiking at sixteen.
-
-After university, Jerry embarked on an incredible 22-month overland trip to and from Australia — without a mobile phone, a guidebook, or a credit card.  Countries visited included Greece, Egypt, Turkey, Iran, Qatar, Pakistan, India, Burma, Bangladesh, Thailand, Malaysia and Singapore. Travelling  24,000km in a battered Holden station wagon around Australia was one of the many highlights of the trip. You could say it was the kind of adventure that no longer exists.</p>
+        <h3 class="tl-heading">A Father's Legacy</h3>
+        <p class="tl-text">
+          Jerry's father Walter was an early pioneer of UK travel. His company,
+          Swiss Travel Service, established in 1949, was among the first to offer
+          travel to everyday people after the Second World War. He encouraged
+          Jerry to buy his first backpack and go hitch-hiking at sixteen.
+        </p>
       </div>
       <div class="tl-image">
-        <img src="assets/2-pics-of-dad-2.jpg" alt="Walter Bridge">
+        <img src="./assets/walter-bridge.jpg" alt="Walter Bridge" />
       </div>
     </div>
 
@@ -584,7 +636,7 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
         </p>
       </div>
       <div class="tl-image">
-        <img src="./assets/travel-montage.jpg" alt="Travel adventure">
+        <img src="./assets/travel-montage.jpg" alt="Travel adventure" />
       </div>
     </div>
 
@@ -600,14 +652,14 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
         </p>
       </div>
       <div class="tl-image">
-        <img src="./assets/first-booking-phone.jpg" alt="The first booking — where it all started">
+        <img src="./assets/first-booking-phone.jpg" alt="The first booking — where it all started" />
       </div>
     </div>
 
     <div class="timeline-item fade-in">
       <div class="tl-content">
         <p class="tl-year">Recognition</p>
-        <h3 class="tl-heading">Awards &amp; Industry Impact</h3>
+        <h3 class="tl-heading">Awards & Industry Impact</h3>
         <p class="tl-text">
           Entrepreneur of the Year. OzCARS Winner for Outstanding Contribution
           to the Australian Tourism Industry. Multiple travel awards.
@@ -616,7 +668,7 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
         </p>
       </div>
       <div class="tl-image">
-        <img src="./assets/ozcars-winner.jpg" alt="Awards">
+        <img src="./assets/ozcars-winner.jpg" alt="Awards" />
       </div>
     </div>
   </section>
@@ -626,19 +678,19 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
     <p class="section-label">Recognition</p>
     <div class="awards-grid">
       <div class="award-item">
-        <img src="./assets/award-gold.jpg" alt="Gold award">
+        <img src="./assets/award-gold.jpg" alt="Gold award" />
         <p class="award-label">Travel Industry Award</p>
       </div>
       <div class="award-item">
-        <img src="./assets/globe-award.jpg" alt="Globe award">
+        <img src="./assets/globe-award.jpg" alt="Globe award" />
         <p class="award-label">The Observer Travel Award</p>
       </div>
       <div class="award-item">
-        <img src="./assets/aus-tourism-award.jpg" alt="Australian Tourism Award">
+        <img src="./assets/aus-tourism-award.jpg" alt="Australian Tourism Award" />
         <p class="award-label">Australian Tourism Award</p>
       </div>
       <div class="award-item">
-        <img src="./assets/entrepreneur-award.jpg" alt="Entrepreneur award">
+        <img src="./assets/entrepreneur-award.jpg" alt="Entrepreneur award" />
         <p class="award-label">Entrepreneur of the Year 2000</p>
       </div>
     </div>
@@ -648,7 +700,7 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
   <div class="author-section" id="author">
     <div class="author-inner">
       <div class="author-image">
-        <img src="./assets/jerry-headshot.jpg" alt="Jerry Bridge">
+        <img src="./assets/jerry-headshot.jpg" alt="Jerry Bridge" />
       </div>
       <div class="author-bio">
         <p class="section-label">About the Author</p>
@@ -712,12 +764,22 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
   <!-- BOOK CTA -->
   <section class="book-cta" id="book-cta">
     <div class="book-cta-cover">
-      <img src="assets/jerry-bridge-travelman-mock-2.png" alt="Travelman by Jerry Bridge — front cover">
+      <img src="assets/travelman-cover.jpg" alt="Travelman by Jerry Bridge — front cover">
     </div>
     <div class="book-cta-action">
       <h2>Buy the Book</h2>
       <p>A true story of ambition, travel, and risk — where building a business becomes a journey of its own.</p>
       <a href="#" class="buy-btn">Coming Soon</a>
+    </div>
+  </section>
+
+  <!-- CONTACT ME -->
+  <section class="contact-me" id="contact-me">
+    <div class="contact-me-box">
+      <div class="contact-me-icon">✉</div>
+      <h2>Contact Jerry Directly</h2>
+      <p>Have a question, a story to share, or want to connect? Jerry reads every message personally.</p>
+      <a href="mailto:jerry@bridgetravels.com?subject=Travelman" class="contact-me-btn">Send Jerry a Message</a>
     </div>
   </section>
 
@@ -736,10 +798,10 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
 
   <!-- FOOTER -->
   <footer>
-    <p>© 2026 Jerry Bridge. All rights reserved.</p>
+    <p>&copy; 2026 Jerry Bridge. All rights reserved.</p>
     <p style="margin-top: 0.5rem;">
       <a href="https://bridgetravels.com" target="_blank">bridgetravels.com</a>
-      &nbsp;•&nbsp;
+      &nbsp;&bull;&nbsp;
       <a href="https://whattodoinwellington.com" target="_blank">whattodoinwellington.com</a>
     </p>
   </footer>
@@ -766,5 +828,5 @@ After university, Jerry embarked on an incredible 22-month overland trip to and 
     });
   </script>
 
-
-</body></html>
+</body>
+</html>
