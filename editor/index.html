@@ -901,7 +901,8 @@ body.col-resizing iframe { pointer-events: none; }
   <div class="deploy-bar">
     <button class="back-btn" onclick="location.reload()">Log Out</button>
     <span class="change-count" id="changeCount">No changes</span>
-    <button class="apply-btn" id="applyBtn" onclick="applyChanges()" disabled>Apply</button>
+    <button class="apply-btn" id="undoBtn" onclick="performUndo()" disabled style="background:transparent;border:1px solid var(--border);color:var(--text-dim);margin-right:8px;min-width:60px;" title="Nothing to undo">Undo</button>
+      <button class="apply-btn" id="applyBtn" onclick="applyChanges()" disabled>Apply</button>
     <button class="deploy-btn" id="deployBtn" onclick="deploySite()" disabled>Deploy Changes</button>
   </div>
 </div>
@@ -979,6 +980,34 @@ function parseGithubPagesUrl(url) {
 // ==========================================
 // STATE
 // ==========================================
+let undoStack = [];
+const MAX_UNDO = 30;
+
+function pushUndo(label) {
+  undoStack.push({ label: label || 'change', sections: JSON.parse(JSON.stringify(state.sections)) });
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  updateUndoButton();
+}
+
+function performUndo() {
+  if (undoStack.length === 0) return;
+  const snapshot = undoStack.pop();
+  state.sections = snapshot.sections;
+  renderSections();
+  renderEditor();
+  updateChangeCount();
+  updateUndoButton();
+  // Re-apply to preview
+  applyChanges();
+}
+
+function updateUndoButton() {
+  const btn = document.getElementById('undoBtn');
+  if (!btn) return;
+  btn.disabled = undoStack.length === 0;
+  btn.title = undoStack.length > 0 ? 'Undo: ' + undoStack[undoStack.length - 1].label + ' (' + undoStack.length + ')' : 'Nothing to undo';
+}
+
 let state = {
   pat: '',
   owner: '',
@@ -1655,9 +1684,9 @@ function renderEditor() {
       </div>
       ${isLong ?
         `<textarea data-section="${section.id}" data-element="${te.id}" data-type="text"
-          oninput="handleTextEdit(this)">${escapeHtml(te.content)}</textarea>` :
+          oninput="handleTextEdit(this)" onfocus="handleTextEditFocus(this)" onblur="handleTextEditBlur()">${escapeHtml(te.content)}</textarea>` :
         `<input type="text" data-section="${section.id}" data-element="${te.id}" data-type="text"
-          oninput="handleTextEdit(this)" value="${escapeAttr(te.content)}">`
+          oninput="handleTextEdit(this)" onfocus="handleTextEditFocus(this)" onblur="handleTextEditBlur()" value="${escapeAttr(te.content)}">`
       }
       <div class="font-size-control">
         <span>Size</span>
@@ -1744,7 +1773,7 @@ function renderEditor() {
       html += '      </div>';
       html += '      <div style="margin-top:6px;">';
       html += '        <input type="text" data-section="' + section.id + '" data-element="' + ie.id + '" data-type="alt"';
-      html += '          oninput="handleAltEdit(this)" value="' + escapeAttr(ie.alt) + '" placeholder="Alt text">';
+      html += '          oninput="handleAltEdit(this)" onfocus="handleAltEditFocus(this)" onblur="handleAltEditBlur()" value="' + escapeAttr(ie.alt) + '" placeholder="Alt text">';
       html += '      </div>';
       html += (changed ? '      <button class="reset-btn" onclick="resetElement(\'' + section.id + '\',\'' + ie.id + '\',\'image\')">Reset</button>' : '');
       html += '    </div>';
@@ -1840,6 +1869,20 @@ function resolveImageUrl(src) {
 // ==========================================
 // EVENT HANDLERS
 // ==========================================
+let _undoPushedForField = null;
+
+function handleTextEditFocus(el) {
+  const key = el.dataset.section + ':' + el.dataset.element;
+  if (_undoPushedForField !== key) {
+    pushUndo('edit text');
+    _undoPushedForField = key;
+  }
+}
+
+function handleTextEditBlur() {
+  _undoPushedForField = null;
+}
+
 function handleTextEdit(el) {
   const sectionId = el.dataset.section;
   const elementId = el.dataset.element;
@@ -1853,6 +1896,20 @@ function handleTextEdit(el) {
   }
   renderSections();
   updateChangeCount();
+}
+
+let _undoPushedForAlt = null;
+
+function handleAltEditFocus(el) {
+  const key = el.dataset.section + ':' + el.dataset.element;
+  if (_undoPushedForAlt !== key) {
+    pushUndo('edit alt text');
+    _undoPushedForAlt = key;
+  }
+}
+
+function handleAltEditBlur() {
+  _undoPushedForAlt = null;
 }
 
 function handleAltEdit(el) {
@@ -1875,6 +1932,7 @@ function deleteImage(sectionId, elementId) {
   if (!section) return;
   const ie = section.imageElements.find(i => i.id === elementId);
   if (ie) {
+    pushUndo('delete image');
     ie.deleted = true;
     // Instantly hide in preview
     updatePreviewInstant(ie.selector, 'delete');
@@ -1921,6 +1979,7 @@ function updatePreviewInstant(selector, type, value) {
 }
 
 function startImageSwap(sectionId, elementId) {
+  pushUndo('swap image');
   state.pendingImageSwap = { sectionId, elementId };
   document.getElementById('fileChooser').click();
 }
@@ -2074,6 +2133,7 @@ function startSectionRenamePanel(sectionId) {
 function applySectionRename(sectionId, newName) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
+  pushUndo('rename section');
 
   section.name = newName;
 
@@ -2087,6 +2147,45 @@ function applySectionRename(sectionId, newName) {
   }
 
   checkApplyButton();
+}
+
+// Reorder images in DOM to match the editor array order
+function reorderSectionImages(doc, section) {
+  try {
+    const sectionEl = doc.querySelector(section.outerSelector);
+    if (!sectionEl) return;
+    const visibleImages = section.imageElements.filter(ie => !ie.deleted && !ie.isBgImage);
+    if (visibleImages.length < 2) return;
+    
+    // Check if order actually changed
+    let orderChanged = false;
+    const origOrder = visibleImages.map(ie => ie.originalIndex !== undefined ? ie.originalIndex : -1);
+    for (let i = 1; i < origOrder.length; i++) {
+      if (origOrder[i] < origOrder[i-1]) { orderChanged = true; break; }
+    }
+    if (!orderChanged) return;
+    
+    // Find the DOM wrappers in current order
+    const wrappers = [];
+    visibleImages.forEach(ie => {
+      const el = doc.querySelector(ie.selector);
+      if (!el) return;
+      const wrapper = el.closest('.strip-item') || el.parentElement;
+      if (wrapper) wrappers.push(wrapper);
+    });
+    
+    if (wrappers.length < 2) return;
+    
+    // Get the parent and reference point
+    const parent = wrappers[0].parentElement;
+    if (!parent) return;
+    
+    // Reorder: append each wrapper in the desired order (this moves them)
+    wrappers.forEach(w => parent.appendChild(w));
+    console.log('[Reorder] Reordered', wrappers.length, 'images in section:', section.name);
+  } catch(e) {
+    console.warn('Reorder failed:', section.name, e);
+  }
 }
 
 function applyChanges() {
@@ -2209,6 +2308,11 @@ function applyChanges() {
           }
         } catch (e) { console.warn('Selector failed:', ie.selector, e); }
       });
+    });
+
+    // Reorder images to match editor order
+    state.sections.forEach(section => {
+      reorderSectionImages(doc, section);
     });
 
     // Add media with base64 data URLs for preview
@@ -2451,6 +2555,11 @@ async function deploySite() {
           console.warn('Selector failed:', ie.selector, e);
         }
       });
+    });
+
+    // Reorder images to match editor order
+    state.sections.forEach(section => {
+      reorderSectionImages(doc, section);
     });
 
     // Add media to sections
@@ -2734,7 +2843,10 @@ function getLayoutHint(addedMedia) {
 function moveImageElement(sectionId, elementId, direction) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
+  pushUndo('reorder image');
   const arr = section.imageElements;
+  // Ensure originalIndex is set on first move
+  arr.forEach((ie, i) => { if (ie.originalIndex === undefined) ie.originalIndex = i; });
   const idx = arr.findIndex(ie => ie.id === elementId);
   if (idx < 0) return;
   const newIdx = idx + direction;
@@ -2748,6 +2860,7 @@ function moveImageElement(sectionId, elementId, direction) {
 function moveAddedMedia(sectionId, mediaId, direction) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section || !section.addedMedia) return;
+  pushUndo('reorder media');
   const arr = section.addedMedia;
   const idx = arr.findIndex(am => am.id === mediaId);
   if (idx < 0) return;
@@ -2969,6 +3082,11 @@ function handlePaddingChange(sectionId, side, value) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   value = parseInt(value, 10);
+  if (!section._spacingUndoPushed) {
+    pushUndo('change spacing');
+    section._spacingUndoPushed = true;
+    setTimeout(() => { section._spacingUndoPushed = false; }, 500);
+  }
   if (side === 'top') section.paddingTop = value;
   else section.paddingBottom = value;
   // Update just the display value, not the whole editor (avoids losing slider focus)
@@ -2981,6 +3099,11 @@ function handlePaddingChange(sectionId, side, value) {
 function handleGapChange(sectionId, value) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
+  if (!section._gapUndoPushed) {
+    pushUndo('change spacing');
+    section._gapUndoPushed = true;
+    setTimeout(() => { section._gapUndoPushed = false; }, 500);
+  }
   section.elementGap = parseInt(value, 10);
   const valSpan = document.getElementById(`gap-val-${sectionId}`);
   if (valSpan) valSpan.textContent = section.elementGap + 'px';
@@ -3017,6 +3140,7 @@ function resetImageScale(sectionId, elementId) {
 
 // FONT FAMILY HANDLER
 function handleFontFamilyChange(sectionId, elementId, value) {
+  pushUndo('change font');
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   const te = section.textElements.find(t => t.id === elementId);
@@ -3040,6 +3164,7 @@ function resetFontFamily(sectionId, elementId) {
 }
 
 function handleFontSizeChange(sectionId, selector, elementId, value) {
+  pushUndo('change font size');
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   const te = section.textElements.find(t => t.id === elementId);
@@ -3054,6 +3179,7 @@ function handleFontSizeChange(sectionId, selector, elementId, value) {
 }
 
 function handleFontColorChange(sectionId, selector, elementId, value) {
+  pushUndo('change font colour');
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   const te = section.textElements.find(t => t.id === elementId);
@@ -3184,6 +3310,13 @@ function escapeAttr(str) {
   setupResize('resizeHandle1');
   setupResize('resizeHandle2');
 })();
+
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    performUndo();
+  }
+});
 </script>
 </body>
 </html>
