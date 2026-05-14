@@ -2197,7 +2197,15 @@ function applyChanges() {
               const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
               el.setAttribute('src', previewSrc);
             }
-            if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
+            if (ie.alt !== ie.originalAlt) {
+              el.setAttribute('alt', ie.alt);
+              // Also update sibling caption text to match alt
+              const wrapper = el.closest('.strip-item');
+              if (wrapper) {
+                const cap = wrapper.querySelector('.caption');
+                if (cap) cap.textContent = ie.alt;
+              }
+            }
           }
         } catch (e) { console.warn('Selector failed:', ie.selector, e); }
       });
@@ -2429,7 +2437,15 @@ async function deploySite() {
             el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${ie.src}')`));
           } else {
             if (ie.src !== ie.originalSrc) el.setAttribute('src', ie.src);
-            if (ie.alt !== ie.originalAlt) el.setAttribute('alt', ie.alt);
+            if (ie.alt !== ie.originalAlt) {
+              el.setAttribute('alt', ie.alt);
+              // Also update sibling caption text to match alt
+              const wrapper = el.closest('.strip-item');
+              if (wrapper) {
+                const cap = wrapper.querySelector('.caption');
+                if (cap) cap.textContent = ie.alt;
+              }
+            }
           }
         } catch (e) {
           console.warn('Selector failed:', ie.selector, e);
