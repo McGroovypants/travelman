@@ -1330,7 +1330,6 @@ function parseHtml(html) {
       // Skip if this is just a container for other elements we'll capture
       if (textEl.querySelector('h1, h2, h3, h4, h5, h6, p')) return;
       // Skip captions inside gallery strip-items (they belong to the image, not standalone)
-      if (textEl.closest('.strip-item')) return;
 
       const elTag = textEl.tagName.toLowerCase();
       const selector = buildSelector(textEl);
