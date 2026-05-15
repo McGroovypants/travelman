@@ -1788,7 +1788,8 @@ function renderEditor() {
 
       // Render any addedMedia associated with this image inline
       if (mediaByImageId[ie.id]) {
-        mediaByImageId[ie.id].forEach(am => {
+        const group = mediaByImageId[ie.id];
+        group.forEach((am, gi) => {
           const dw = am.displayWidth || 100;
           const minPx = Math.round(dw * 12);
           const tooSmall = am.width < minPx;
@@ -1809,6 +1810,10 @@ function renderEditor() {
           html += '          oninput="handleAddedMediaAlt(\'' + section.id + '\',\'' + am.id + '\',this.value)">';
           html += '      </div>';
           html += '      <button class="ami-remove" onclick="removeAddedMedia(\'' + section.id + '\',\'' + am.id + '\')" title="Remove">x</button>';
+          html += '    </div>';
+          html += '    <div class="reorder-btns">';
+          html += '      <button class="reorder-btn" onclick="moveAddedMedia(\'' + section.id + '\',\'' + am.id + '\',-1)" ' + (am._globalIdx === 0 ? 'disabled' : '') + ' title="Move up">&#9650;</button>';
+          html += '      <button class="reorder-btn" onclick="moveAddedMedia(\'' + section.id + '\',\'' + am.id + '\',1)" ' + (am._globalIdx === section.addedMedia.length - 1 ? 'disabled' : '') + ' title="Move down">&#9660;</button>';
           html += '    </div>';
           html += '  </div>';
           html += '</div>';
@@ -2438,6 +2443,8 @@ function applyChanges() {
 
     btn.textContent = 'Applied!';
     btn.className = 'apply-btn success';
+    renderEditor();
+    renderSections();
     setTimeout(() => {
       btn.textContent = 'Apply';
       btn.className = 'apply-btn';
@@ -2974,6 +2981,11 @@ document.getElementById('addMediaChooser').addEventListener('change', function(e
             renderEditor();
             renderSections();
             updateChangeCount();
+            // Scroll editor panel to bottom to show newly added media
+            setTimeout(() => {
+              const col = document.getElementById('editorCol');
+              if (col) col.scrollTop = col.scrollHeight;
+            }, 100);
           }
         }
       };
