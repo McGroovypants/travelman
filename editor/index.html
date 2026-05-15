@@ -2782,7 +2782,26 @@ async function deploySite() {
     checkLiveStatus(deployMarker);
 
     // Refresh preview instantly from new HTML
-    loadBlobPreview(newHtml);
+    // Use base64 data in preview so new images show immediately
+    // (GitHub Pages hasn't deployed the asset files yet)
+    let previewHtml = newHtml;
+    addedMediaImages.forEach(am => {
+      const escaped = am.fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      previewHtml = previewHtml.replace(
+        new RegExp('src="assets/' + escaped + '"', 'g'),
+        'src="data:image/jpeg;base64,' + am.base64 + '"'
+      );
+    });
+    newImages.forEach(ie => {
+      if (ie.newFileBase64 && ie.newFileName) {
+        const escaped = ie.newFileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        previewHtml = previewHtml.replace(
+          new RegExp('src="assets/' + escaped + '"', 'g'),
+          'src="data:image/jpeg;base64,' + ie.newFileBase64 + '"'
+        );
+      }
+    });
+    loadBlobPreview(previewHtml);
 
     renderSections();
     renderEditor();
@@ -2824,6 +2843,9 @@ async function checkLiveStatus(deployMarker) {
       const text = await resp.text();
       if (text.includes(deployMarker)) {
         showToast('✓ Changes are live!', 5000);
+        // Reload iframe from the live site now that GH Pages has deployed
+        const iframe = document.getElementById('previewFrame');
+        if (iframe) iframe.src = liveUrl + '?_cb=' + Date.now();
         return;
       }
     } catch (e) {
