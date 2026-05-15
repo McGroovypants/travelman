@@ -1639,6 +1639,9 @@ function renderEditor() {
     return;
   }
 
+  try {
+  // Begin try block for error capture
+
   const nameChanged = section.name !== section.originalName;
   let html = `<h3 class="section-name-edit" onclick="startSectionRenamePanel('${section.id}')">
     <span id="section-name-display-${section.id}">${escapeHtml(section.name)}</span>
@@ -1863,6 +1866,10 @@ function renderEditor() {
   html += `<button class="add-media-btn" onclick="startAddMedia('${section.id}')">+ Add Media</button>`;
 
   col.innerHTML = html;
+  } catch(err) {
+    console.error('[renderEditor] CRASH:', err);
+    col.innerHTML = '<div style="color:red;padding:20px;"><strong>Editor render error:</strong> ' + err.message + '<br><br>Added media: ' + (section.addedMedia ? section.addedMedia.length : 0) + '</div>';
+  }
 }
 
 function resolveImageUrl(src) {
@@ -2932,6 +2939,8 @@ document.getElementById('addMediaChooser').addEventListener('change', function(e
   const sectionId = addMediaState.targetSectionId;
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
+  pushUndo('add media');
+  console.log('[AddMedia] Processing', files.length, 'files for section:', sectionId);
 
   let processed = 0;
   const toResolve = [];
@@ -2978,14 +2987,24 @@ document.getElementById('addMediaChooser').addEventListener('change', function(e
             addMediaState.resolvingIndex = 0;
             showResWarning(toResolve[0]);
           } else {
-            renderEditor();
-            renderSections();
-            updateChangeCount();
-            // Scroll editor panel to bottom to show newly added media
-            setTimeout(() => {
-              const col = document.getElementById('editorCol');
-              if (col) col.scrollTop = col.scrollHeight;
-            }, 100);
+            console.log('[AddMedia] All files processed. addedMedia count:', section.addedMedia.length);
+            try {
+              renderEditor();
+              renderSections();
+              updateChangeCount();
+              showToast(files.length + ' image' + (files.length > 1 ? 's' : '') + ' added to ' + section.name);
+              // Scroll editor panel to bottom to show newly added media
+              setTimeout(() => {
+                const col = document.getElementById('editorCol');
+                if (col) {
+                  col.scrollTop = col.scrollHeight;
+                  console.log('[AddMedia] Scrolled editor panel. scrollHeight:', col.scrollHeight);
+                }
+              }, 150);
+            } catch(err) {
+              console.error('[AddMedia] Render error after adding media:', err);
+              showToast('Error rendering: ' + err.message);
+            }
           }
         }
       };
