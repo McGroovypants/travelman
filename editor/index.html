@@ -2188,6 +2188,22 @@ function reorderSectionImages(doc, section) {
   }
 }
 
+
+function findImageBySrc(doc, src, sectionSelector) {
+  // Find image by its original src attribute within the section
+  try {
+    const sectionEl = sectionSelector ? doc.querySelector(sectionSelector) : doc;
+    if (!sectionEl) return null;
+    const imgs = sectionEl.querySelectorAll('img');
+    const srcFile = src.split('/').pop();
+    for (const img of imgs) {
+      const imgSrc = (img.getAttribute('src') || '').split('/').pop();
+      if (imgSrc === srcFile) return img;
+    }
+  } catch(e) { console.warn('findImageBySrc failed:', e); }
+  return null;
+}
+
 function applyChanges() {
   const btn = document.getElementById('applyBtn');
   btn.disabled = true;
@@ -2254,7 +2270,7 @@ function applyChanges() {
       section.imageElements.forEach(ie => {
         if (!ie.deleted && ie.imageScale !== ie.originalImageScale) {
           try {
-            const el = doc.querySelector(ie.selector);
+            const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
             if (el) {
               if (ie.isBgImage) {
                 el.style.backgroundSize = ie.imageScale + '%';
@@ -2269,7 +2285,7 @@ function applyChanges() {
 
       section.imageElements.forEach(ie => {
         try {
-          const el = doc.querySelector(ie.selector);
+          const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
           if (!el) return;
           if (ie.deleted) {
             // Remove parent wrapper (strip-item), not just the img
@@ -2518,7 +2534,7 @@ async function deploySite() {
 
       section.imageElements.forEach(ie => {
         try {
-          const el = doc.querySelector(ie.selector);
+          const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
           if (!el) return;
           if (ie.deleted) {
             // Remove parent wrapper (strip-item), not just the img
