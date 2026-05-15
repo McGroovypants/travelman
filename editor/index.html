@@ -2803,6 +2803,11 @@ async function deploySite() {
     });
     loadBlobPreview(previewHtml);
 
+    // Re-parse sections from new HTML so added media becomes regular imageElements
+    const selectedId = state.selectedSectionId;
+    state.sections = parseHtml(newHtml);
+    state.selectedSectionId = selectedId;
+
     renderSections();
     renderEditor();
 
