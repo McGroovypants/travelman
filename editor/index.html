@@ -1345,11 +1345,22 @@ function parseHtml(html) {
     const id = el.id || el.className.split(/\s+/)[0] || `section-${sections.length}`;
     const tag = el.tagName.toLowerCase();
 
-    // Get section name from heading or id
-    const heading = el.querySelector('h1, h2, h3');
-    const name = heading ? heading.textContent.trim().substring(0, 50) :
-                 el.id ? el.id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) :
-                 `${tag} ${sections.length + 1}`;
+    // Get section name from heading, visible text, or id
+    const heading = el.querySelector('h1, h2, h3, h4, h5, h6');
+    let name = '';
+    if (heading) {
+      name = heading.textContent.trim().substring(0, 50);
+    } else {
+      const candidates = el.querySelectorAll('p, span, a, blockquote, figcaption, cite, em, strong, .tagline, .quote-text, .caption, .hook-text');
+      for (const c of candidates) {
+        const t = c.textContent.trim();
+        if (t && t.length > 3) { name = t.substring(0, 50); break; }
+      }
+    }
+    if (!name) {
+      name = el.id ? el.id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) :
+             `${tag} ${sections.length + 1}`;
+    }
 
     // Find text elements
     const textElements = [];
