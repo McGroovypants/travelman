@@ -2544,6 +2544,12 @@ async function deploySite() {
             if (el) { el.style.color = te.fontColor; deployLog.fontColor++; }
           } catch (e) { console.warn('Font color deploy failed:', te.selector, e); }
         }
+        if (te.fontFamily !== te.originalFontFamily) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) { el.style.fontFamily = te.fontFamily; deployLog.fontFamily++; }
+          } catch (e) { console.warn('Font family deploy failed:', te.selector, e); }
+        }
       });
 
       section.imageElements.forEach(ie => {
