@@ -3408,6 +3408,16 @@ document.addEventListener('keydown', function(e) {
     performUndo();
   }
 });
+
+    // Warn user before leaving with unsaved changes
+    window.addEventListener('beforeunload', function(e) {
+      const hasChanges = document.querySelectorAll('.element-group.changed').length > 0;
+      const hasNewMedia = sections && sections.some(s => s.addedMedia && s.addedMedia.length > 0);
+      if (hasChanges || hasNewMedia) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 </script>
 </body>
 </html>
