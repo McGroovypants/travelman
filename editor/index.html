@@ -2325,7 +2325,7 @@ function applyChanges() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
@@ -2582,7 +2582,7 @@ async function deploySite() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt) return;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${ie.src}')`));
@@ -2597,6 +2597,17 @@ async function deploySite() {
                 if (cap) cap.textContent = ie.alt;
               }
             }
+          }
+          // Deploy image scale change
+          if (ie.imageScale !== ie.originalImageScale) {
+            if (ie.isBgImage) {
+              el.style.backgroundSize = ie.imageScale + '%';
+            } else {
+              el.style.width = ie.imageScale + '%';
+              el.style.height = 'auto';
+            }
+            deployLog.imageScale++;
+            console.log('[Deploy] Image scale changed:', ie.selector || ie.originalSrc, '→', ie.imageScale + '%');
           }
         } catch (e) {
           console.warn('Selector failed:', ie.selector, e);
