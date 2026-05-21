@@ -758,6 +758,43 @@
         if (target) target.scrollIntoView({ behavior: 'smooth' });
       });
     });
+
+    // Auto-scroll gallery strips, stops on user interaction
+    document.querySelectorAll('.strip-scroll').forEach(strip => {
+      let autoScroll = true;
+      let speed = 0.5;
+      let raf;
+
+      function tick() {
+        if (!autoScroll) return;
+        strip.scrollLeft += speed;
+        // Stop at the end
+        if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth) {
+          autoScroll = false;
+          return;
+        }
+        raf = requestAnimationFrame(tick);
+      }
+
+      // Stop auto-scroll on any user interaction
+      ['mousedown', 'touchstart', 'wheel', 'pointerdown'].forEach(evt => {
+        strip.addEventListener(evt, () => {
+          autoScroll = false;
+          if (raf) cancelAnimationFrame(raf);
+        }, { once: true, passive: true });
+      });
+
+      // Start when the gallery enters the viewport
+      const startObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && autoScroll) {
+            tick();
+            startObserver.unobserve(strip);
+          }
+        });
+      }, { threshold: 0.1 });
+      startObserver.observe(strip);
+    });
   </script>
 
 
