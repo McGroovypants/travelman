@@ -1283,22 +1283,22 @@ window.addEventListener('message', function(e) {
     if (state) state._previewScrollY = e.data.y;
   }
   if (e.data && e.data.type === 'computedColors') {
-    // Update state with real rendered colors from iframe
-    const results = e.data.results;
-    state.sections.forEach(section => {
-      section.textElements.forEach(te => {
-        if (results[te.id]) {
-          const realColor = rgbToHex(results[te.id]);
-          // Only update if user hasn't already edited the color
-          if (te.fontColor === te.originalFontColor) {
+    // Only set baselines on initial load, never after Apply/preview rebuilds
+    if (!state._computedColorsInitialized) {
+      state._computedColorsInitialized = true;
+      const results = e.data.results;
+      state.sections.forEach(section => {
+        section.textElements.forEach(te => {
+          if (results[te.id]) {
+            const realColor = rgbToHex(results[te.id]);
             te.fontColor = realColor;
+            te.originalFontColor = realColor;
           }
-          te.originalFontColor = realColor;
-        }
+        });
       });
-    });
-    // Re-render to show correct colors in color pickers
-    renderSections();
+      // Re-render to show correct colors in color pickers
+      renderSections();
+    }
   }
 });
 
@@ -1620,6 +1620,7 @@ async function loadSiteAuto() {
     showLoading('Parsing sections...');
     detectedFonts = detectSiteFonts(content);
     state.sections = parseHtml(content);
+    state._computedColorsInitialized = false;
     state.selectedSectionId = state.sections.length > 0 ? state.sections[0].id : null;
 
     // Setup preview — blob URL for instant rendering
