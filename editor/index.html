@@ -265,6 +265,22 @@ body {
   font-size: 11px;
   margin-top: 2px;
 }
+.section-card .delete-btn {
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 14px; padding: 2px 4px; opacity: 0; transition: opacity 0.2s;
+  margin-left: 4px; line-height: 1;
+}
+.section-card:hover .delete-btn { opacity: 0.6; }
+.section-card .delete-btn:hover { opacity: 1; color: #e74c3c; }
+.section-deleted-banner {
+  background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3);
+  border-radius: 8px; padding: 20px; text-align: center; margin: 10px 0;
+}
+.section-deleted-banner p { color: #e74c3c; font-size: 14px; margin: 0 0 10px 0; }
+.section-deleted-banner button {
+  background: var(--gold); color: var(--bg); border: none; padding: 6px 16px;
+  border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+}
 
 /* Resize handles */
 .resize-handle {
@@ -1132,15 +1148,22 @@ const PREVIEW_BRIDGE = `<script>
     if (d.type === 'scrollTo') {
       var el = document.querySelector(d.selector);
       if (!el) return;
+      var offset = d.offset !== undefined ? d.offset : 80;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       var orig = el.style.outline;
       el.style.outline = '3px solid #3498db';
       setTimeout(function() { el.style.outline = orig; }, 1500);
     } else if (d.type === 'scrollToY') {
-      (document.scrollingElement || document.documentElement).scrollTop = d.y;
+      window.scrollTo(0, d.y);
     } else if (d.type === 'updateText') {
       var el = document.querySelector(d.selector);
-      if (el) el.textContent = d.value;
+      if (el) {
+        if (d.value.indexOf('<br>') !== -1) {
+          el.innerHTML = d.value;
+        } else {
+          el.textContent = d.value;
+        }
+      }
     } else if (d.type === 'updateAlt') {
       var el = document.querySelector(d.selector);
       if (el) el.setAttribute('alt', d.value);
@@ -1596,14 +1619,20 @@ function renderSections() {
     };
 
     const addedCount = section.addedMedia ? section.addedMedia.length : 0;
-    let html = `<div>
-      <div class="name" ondblclick="startSectionRename(event, '${section.id}')" title="Double-click to rename">${escapeHtml(section.name)}</div>
+    let html = `<div style="flex:1;min-width:0;">
+      <div class="name" ondblclick="startSectionRename(event, '${section.id}')" title="Double-click to rename">${escapeHtml(section.name)}${section.deleted ? ' <span style="color:#e74c3c;font-size:11px;">[deleted]</span>' : ''}</div>
       <div class="meta">${section.textElements.length}T ${section.imageElements.length}I${addedCount > 0 ? ' +' + addedCount + 'M' : ''}</div>
     </div>`;
     if (changes > 0) {
       html += `<span class="badge">${changes}</span>`;
     }
+    if (!section.deleted) {
+      html += `<button class="delete-btn" onclick="event.stopPropagation(); deleteSection('${section.id}')" title="Delete section">&#x2715;</button>`;
+    } else {
+      html += `<button class="delete-btn" style="opacity:1;color:var(--gold);" onclick="event.stopPropagation(); restoreSection('${section.id}')" title="Restore section">&#x21A9;</button>`;
+    }
     card.innerHTML = html;
+    if (section.deleted) card.style.opacity = '0.5';
     list.appendChild(card);
   });
 }
@@ -1647,6 +1676,11 @@ function renderEditor() {
     col.innerHTML = '<div class="editor-empty">Select a section to edit</div>';
     return;
   }
+  // Show deleted banner for deleted sections
+  if (section.deleted) {
+    editor.innerHTML = '<div class="section-deleted-banner"><p>This section has been marked for deletion.</p><p style="color:var(--text-dim);font-size:12px;margin-bottom:10px;">It will be removed when you Apply or Deploy.</p><button onclick="restoreSection(\'' + section.id + '\')">Restore Section</button></div>';
+    return;
+  }
 
   try {
   // Begin try block for error capture
@@ -1687,19 +1721,14 @@ function renderEditor() {
     const fontChanged = te.fontSize !== te.originalFontSize || te.fontFamily !== te.originalFontFamily;
     const colorChanged = te.fontColor !== te.originalFontColor;
     const anyChange = changed || fontChanged || colorChanged;
-    const isLong = te.content.length > 80;
     const fontSizes = [12,14,16,18,20,24,28,32,36,40,48,56,64,72];
     html += `<div class="element-group${anyChange ? ' changed' : ''}">
       <div class="el-label">
         <span class="el-tag">${te.tag}</span>
         ${anyChange ? '<span class="el-changed">Modified</span>' : ''}
       </div>
-      ${isLong ?
-        `<textarea data-section="${section.id}" data-element="${te.id}" data-type="text"
-          oninput="handleTextEdit(this)" onfocus="handleTextEditFocus(this)" onblur="handleTextEditBlur()">${escapeHtml(te.content)}</textarea>` :
-        `<input type="text" data-section="${section.id}" data-element="${te.id}" data-type="text"
-          oninput="handleTextEdit(this)" onfocus="handleTextEditFocus(this)" onblur="handleTextEditBlur()" value="${escapeAttr(te.content)}">`
-      }
+      <textarea data-section="${section.id}" data-element="${te.id}" data-type="text" rows="${Math.max(2, Math.ceil(te.content.length / 60))}"
+        oninput="handleTextEdit(this)" onfocus="handleTextEditFocus(this)" onblur="handleTextEditBlur()">${escapeHtml(te.content)}</textarea>
       <div class="font-size-control">
         <span>Size</span>
         <select onchange="handleFontSizeChange('${section.id}','${te.selector}','${te.id}',this.value)">
@@ -1913,7 +1942,9 @@ function handleTextEdit(el) {
   const te = section.textElements.find(t => t.id === elementId);
   if (te) {
     te.content = value;
-    updatePreviewInstant(te.selector, 'text', value);
+    // Convert newlines to <br> for preview display
+    const previewValue = value.replace(/\n/g, '<br>');
+    updatePreviewInstant(te.selector, 'text', previewValue);
   }
   renderSections();
   updateChangeCount();
@@ -1972,6 +2003,31 @@ function restoreImage(sectionId, elementId) {
     // Instantly restore in preview
     updatePreviewInstant(ie.selector, 'restore');
   }
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function deleteSection(sectionId) {
+  if (!confirm('Delete this entire section? This can be undone with the restore button.')) return;
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  pushUndo('delete section');
+  section.deleted = true;
+  // Hide in preview
+  postToPreview({ type: 'updateDisplay', selector: section.outerSelector, value: 'none' });
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function restoreSection(sectionId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  pushUndo('restore section');
+  section.deleted = false;
+  // Show in preview
+  postToPreview({ type: 'updateDisplay', selector: section.outerSelector, value: '' });
   renderEditor();
   renderSections();
   updateChangeCount();
@@ -2237,6 +2293,15 @@ function applyChanges() {
     const doc = parser.parseFromString(html, 'text/html');
 
     state.sections.forEach(section => {
+      // Handle deleted sections
+      if (section.deleted) {
+        try {
+          const sEl = doc.querySelector(section.outerSelector);
+          if (sEl) sEl.remove();
+        } catch(e) { console.warn('Section delete failed:', e); }
+        return;
+      }
+
       // Apply spacing
       try {
         const sEl = doc.querySelector(section.outerSelector);
@@ -2255,14 +2320,18 @@ function applyChanges() {
           try {
             const el = doc.querySelector(te.selector);
             if (el) {
-              const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-              const textNodes = [];
-              let node;
-              while (node = walker.nextNode()) textNodes.push(node);
-              if (textNodes.length === 1) {
-                textNodes[0].textContent = te.content;
+              if (te.content.indexOf('\n') !== -1) {
+                el.innerHTML = te.content.replace(/\n/g, '<br>');
               } else {
-                el.textContent = te.content;
+                const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+                const textNodes = [];
+                let node;
+                while (node = walker.nextNode()) textNodes.push(node);
+                if (textNodes.length === 1) {
+                  textNodes[0].textContent = te.content;
+                } else {
+                  el.textContent = te.content;
+                }
               }
             }
           } catch (e) { console.warn('Selector failed:', te.selector, e); }
@@ -2495,6 +2564,15 @@ async function deploySite() {
     const doc = parser.parseFromString(html, 'text/html');
 
     state.sections.forEach(section => {
+      // Handle deleted sections
+      if (section.deleted) {
+        try {
+          const sEl = doc.querySelector(section.outerSelector);
+          if (sEl) sEl.remove();
+        } catch(e) { console.warn("Section delete failed:", e); }
+        return;
+      }
+
       // Apply spacing
       try {
         const sEl = doc.querySelector(section.outerSelector);
@@ -2519,22 +2597,20 @@ async function deploySite() {
           try {
             const el = doc.querySelector(te.selector);
             if (el) {
-              // Walk text nodes to preserve child element structure
-              const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-              const textNodes = [];
-              let node;
-              while (node = walker.nextNode()) textNodes.push(node);
-              if (textNodes.length === 1) {
-                textNodes[0].textContent = te.content;
+              if (te.content.indexOf("\n") !== -1) {
+                el.innerHTML = te.content.replace(/\n/g, "<br>");
               } else {
-                // Fallback: set textContent (strips children but preserves change)
-                el.textContent = te.content;
+                // Walk text nodes to preserve child element structure
+                const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+                const textNodes = [];
+                let node;
+                while (node = walker.nextNode()) textNodes.push(node);
+                if (textNodes.length === 1) {
+                  textNodes[0].textContent = te.content;
+                } else {
+                  el.textContent = te.content;
+                }
               }
-              deployLog.text++;
-              console.log('[Deploy] Text changed:', te.selector, '→', te.content.substring(0, 40));
-            } else {
-              console.warn('[Deploy] Selector returned null:', te.selector);
-              deployLog.selectorFails++;
             }
           } catch (e) {
             console.warn('Selector failed:', te.selector, e);
