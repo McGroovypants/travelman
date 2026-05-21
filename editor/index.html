@@ -1212,11 +1212,20 @@ const PREVIEW_BRIDGE = `<script>
       d.selectors.forEach(function(item) {
         var el = document.querySelector(item.selector);
         if (el) {
-          var computed = window.getComputedStyle(el).color;
-          results[item.id] = computed;
+          var cs = window.getComputedStyle(item.isImage ? (el.closest('.strip-item') || el.parentElement || el) : el);
+          results[item.id] = { color: cs.color, marginBottom: parseInt(cs.marginBottom, 10) || 0 };
         }
       });
       window.parent.postMessage({ type: 'computedColors', results: results }, '*');
+    } else if (d.type === 'updateElementSpacing') {
+      var target = null;
+      if (d.elementType === 'text') {
+        target = document.querySelector(d.selector);
+      } else {
+        var el = document.querySelector(d.selector);
+        if (el) target = el.closest('.strip-item') || el.parentElement || el;
+      }
+      if (target) target.style.marginBottom = d.spacingBelow + 'px';
     }
   });
   // Report scroll position to parent on scroll so parent can restore it
@@ -1270,6 +1279,9 @@ function loadBlobPreview(html) {
       section.textElements.forEach(te => {
         selectors.push({ id: te.id, selector: te.selector });
       });
+      section.imageElements.forEach(ie => {
+        selectors.push({ id: ie.id, selector: ie.selector, isImage: true });
+      });
     });
     if (selectors.length > 0) {
       postToPreview({ type: 'getComputedColors', selectors: selectors });
@@ -1290,13 +1302,23 @@ window.addEventListener('message', function(e) {
       state.sections.forEach(section => {
         section.textElements.forEach(te => {
           if (results[te.id]) {
-            const realColor = rgbToHex(results[te.id]);
+            const realColor = rgbToHex(results[te.id].color);
             te.fontColor = realColor;
             te.originalFontColor = realColor;
+            if (results[te.id].marginBottom !== undefined) {
+              te.spacingBelow = results[te.id].marginBottom;
+              te.originalSpacingBelow = results[te.id].marginBottom;
+            }
+          }
+        });
+        section.imageElements.forEach(ie => {
+          if (results[ie.id] && results[ie.id].marginBottom !== undefined) {
+            ie.spacingBelow = results[ie.id].marginBottom;
+            ie.originalSpacingBelow = results[ie.id].marginBottom;
           }
         });
       });
-      // Re-render to show correct colors in color pickers
+      // Re-render to show correct baselines in sliders
       renderSections();
     }
   }
@@ -1474,7 +1496,9 @@ function parseHtml(html) {
         fontColor: parsedFontColor,
         originalFontColor: parsedFontColor,
         fontFamily: parsedFontFamily,
-        originalFontFamily: parsedFontFamily
+        originalFontFamily: parsedFontFamily,
+        spacingBelow: 0,
+        originalSpacingBelow: 0
       });
     });
 
@@ -1500,6 +1524,8 @@ function parseHtml(html) {
         originalAlt: alt,
         imageScale: imgScale,
         originalImageScale: imgScale,
+        spacingBelow: 0,
+        originalSpacingBelow: 0,
         newFileBase64: null,
         newFileName: null
       });
@@ -1528,6 +1554,8 @@ function parseHtml(html) {
         isBgImage: true,
         imageScale: bgScale,
         originalImageScale: bgScale,
+        spacingBelow: 0,
+        originalSpacingBelow: 0,
         newFileBase64: null,
         newFileName: null
       });
@@ -1686,10 +1714,12 @@ function countSectionChanges(section) {
     if (te.fontSize !== te.originalFontSize) count++;
     if (te.fontColor !== te.originalFontColor) count++;
     if (te.fontFamily !== te.originalFontFamily) count++;
+    if (te.spacingBelow !== te.originalSpacingBelow) count++;
   });
   section.imageElements.forEach(ie => {
     if (ie.deleted || ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
     if (ie.imageScale !== ie.originalImageScale) count++;
+    if (ie.spacingBelow !== ie.originalSpacingBelow) count++;
   });
   if (section.addedMedia && section.addedMedia.length > 0) {
     count += section.addedMedia.length;
@@ -1761,7 +1791,8 @@ function renderEditor() {
     const changed = te.content !== te.originalContent;
     const fontChanged = te.fontSize !== te.originalFontSize || te.fontFamily !== te.originalFontFamily;
     const colorChanged = te.fontColor !== te.originalFontColor;
-    const anyChange = changed || fontChanged || colorChanged;
+    const spacingChanged = te.spacingBelow !== te.originalSpacingBelow;
+    const anyChange = changed || fontChanged || colorChanged || spacingChanged;
     const fontSizes = [12,14,16,18,20,24,28,32,36,40,48,56,64,72];
     html += `<div class="element-group${anyChange ? ' changed' : ''}">
       <div class="el-label">
@@ -1793,6 +1824,14 @@ function renderEditor() {
         <button onclick="nudgeColor('${section.id}','${te.selector}','${te.id}','lighter',this)">Lighter</button>
         <button onclick="nudgeColor('${section.id}','${te.selector}','${te.id}','darker',this)">Darker</button>
       </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        <label style="font-size:11px;color:#888;white-space:nowrap;">Space below:</label>
+        <input type="range" min="0" max="80" step="2" value="${te.spacingBelow}"
+          style="flex:1;accent-color:${te.spacingBelow !== te.originalSpacingBelow ? '#e67e22' : '#3498db'};"
+          oninput="handleElementSpacing('${section.id}','${te.id}','text',this.value)"
+          title="${te.spacingBelow}px">
+        <span style="font-size:11px;color:#888;min-width:30px;">${te.spacingBelow}px</span>
+      </div>
       ${anyChange ? `<button class="reset-btn" onclick="resetElement('${section.id}','${te.id}','text')">Reset</button>` : ''}
     </div>`;
   });
@@ -1815,7 +1854,7 @@ function renderEditor() {
 
   const visibleImages = section.imageElements.filter(x => !x.deleted);
   section.imageElements.forEach((ie, i) => {
-    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale;
+    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale || ie.spacingBelow !== ie.originalSpacingBelow;
     const imgSrc = ie.newFileBase64 ?
       'data:image/jpeg;base64,' + ie.newFileBase64 :
       resolveImageUrl(ie.src);
@@ -1856,6 +1895,14 @@ function renderEditor() {
       html += '      <div style="margin-top:6px;">';
       html += '        <input type="text" data-section="' + section.id + '" data-element="' + ie.id + '" data-type="alt"';
       html += '          oninput="handleAltEdit(this)" onfocus="handleAltEditFocus(this)" onblur="handleAltEditBlur()" value="' + escapeAttr(ie.alt) + '" placeholder="Alt text">';
+      html += '      </div>';
+      html += '      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">';
+      html += '        <label style="font-size:11px;color:#888;white-space:nowrap;">Space below:</label>';
+      html += '        <input type="range" min="0" max="80" step="2" value="' + ie.spacingBelow + '"';
+      html += '          style="flex:1;accent-color:' + (ie.spacingBelow !== ie.originalSpacingBelow ? '#e67e22' : '#3498db') + ';"';
+      html += '          oninput="handleElementSpacing(\'' + section.id + '\',\'' + ie.id + '\',\'image\',this.value)"';
+      html += '          title="' + ie.spacingBelow + 'px">';
+      html += '        <span style="font-size:11px;color:#888;min-width:30px;">' + ie.spacingBelow + 'px</span>';
       html += '      </div>';
       html += (changed ? '      <button class="reset-btn" onclick="resetElement(\'' + section.id + '\',\'' + ie.id + '\',\'image\')">Reset</button>' : '');
       html += '    </div>';
@@ -2136,12 +2183,15 @@ function resetElement(sectionId, elementId, type) {
       te.fontSize = te.originalFontSize;
       te.fontFamily = te.originalFontFamily;
       te.fontColor = te.originalFontColor;
+      te.spacingBelow = te.originalSpacingBelow;
     }
   } else {
     const ie = section.imageElements.find(i => i.id === elementId);
     if (ie) {
       ie.src = ie.originalSrc;
       ie.alt = ie.originalAlt;
+      ie.imageScale = ie.originalImageScale;
+      ie.spacingBelow = ie.originalSpacingBelow;
       ie.newFileBase64 = null;
       ie.newFileName = null;
     }
@@ -2395,6 +2445,12 @@ function applyChanges() {
             if (el) el.style.fontFamily = te.fontFamily;
           } catch (e) { console.warn('Font family apply failed:', te.selector, e); }
         }
+        if (te.spacingBelow !== te.originalSpacingBelow) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) el.style.marginBottom = te.spacingBelow + 'px';
+          } catch (e) { console.warn('Spacing apply failed:', te.selector, e); }
+        }
       });
 
       // Apply image scale changes
@@ -2411,6 +2467,15 @@ function applyChanges() {
               }
             }
           } catch (e) { console.warn('Image scale apply failed:', ie.selector, e); }
+        }
+        if (ie.spacingBelow !== ie.originalSpacingBelow) {
+          try {
+            const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
+            if (el) {
+              const target = el.closest('.strip-item') || el.parentElement || el;
+              target.style.marginBottom = ie.spacingBelow + 'px';
+            }
+          } catch (e) { console.warn('Image spacing apply failed:', ie.selector, e); }
         }
       });
 
@@ -2433,7 +2498,7 @@ function applyChanges() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale) return;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.spacingBelow === ie.originalSpacingBelow) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
@@ -2676,6 +2741,12 @@ async function deploySite() {
             if (el) { el.style.fontFamily = te.fontFamily; deployLog.fontFamily++; }
           } catch (e) { console.warn('Font family deploy failed:', te.selector, e); }
         }
+        if (te.spacingBelow !== te.originalSpacingBelow) {
+          try {
+            const el = doc.querySelector(te.selector);
+            if (el) { el.style.marginBottom = te.spacingBelow + 'px'; deployLog.spacing = (deployLog.spacing || 0) + 1; }
+          } catch (e) { console.warn('Spacing deploy failed:', te.selector, e); }
+        }
       });
 
       section.imageElements.forEach(ie => {
@@ -2697,7 +2768,7 @@ async function deploySite() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale) return;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.spacingBelow === ie.originalSpacingBelow) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${ie.src}')`));
@@ -2723,6 +2794,12 @@ async function deploySite() {
             }
             deployLog.imageScale++;
             console.log('[Deploy] Image scale changed:', ie.selector || ie.originalSrc, '→', ie.imageScale + '%');
+          }
+          if (ie.spacingBelow !== ie.originalSpacingBelow) {
+            const target = el.closest('.strip-item') || el.parentElement || el;
+            target.style.marginBottom = ie.spacingBelow + 'px';
+            deployLog.spacing = (deployLog.spacing || 0) + 1;
+            console.log('[Deploy] Image spacing changed:', ie.selector || ie.originalSrc, '→', ie.spacingBelow + 'px');
           }
         } catch (e) {
           console.warn('Selector failed:', ie.selector, e);
@@ -3547,3 +3624,25 @@ document.addEventListener('keydown', function(e) {
 </script>
 </body>
 </html>
+    function handleElementSpacing(sectionId, elementId, type, value) {
+      const section = sections.find(s => s.id === sectionId);
+      if (!section) return;
+      const val = parseInt(value);
+      let selector = '';
+      if (type === 'text') {
+        const te = section.textElements.find(e => e.id === elementId);
+        if (te) { te.spacingBelow = val; selector = te.selector; }
+      } else {
+        const ie = section.imageElements.find(e => e.id === elementId);
+        if (ie) { ie.spacingBelow = val; selector = ie.selector; }
+      }
+      postToPreview({
+        type: 'updateElementSpacing',
+        selector: selector,
+        elementType: type,
+        spacingBelow: val
+      });
+      renderSections();
+    }
+
+
