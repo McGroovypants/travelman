@@ -1207,6 +1207,16 @@ const PREVIEW_BRIDGE = `<script>
           child.style.marginBottom = (i < kids.length - 1) ? d.gap + 'px' : '';
         });
       }
+    } else if (d.type === 'getComputedColors') {
+      var results = {};
+      d.selectors.forEach(function(item) {
+        var el = document.querySelector(item.selector);
+        if (el) {
+          var computed = window.getComputedStyle(el).color;
+          results[item.id] = computed;
+        }
+      });
+      window.parent.postMessage({ type: 'computedColors', results: results }, '*');
     }
   });
   // Report scroll position to parent on scroll so parent can restore it
@@ -1253,12 +1263,42 @@ function loadBlobPreview(html) {
   });
 
   iframe.src = currentBlobUrl;
+  // After iframe loads, request actual computed colors
+  iframe.onload = function() {
+    const selectors = [];
+    state.sections.forEach(section => {
+      section.textElements.forEach(te => {
+        selectors.push({ id: te.id, selector: te.selector });
+      });
+    });
+    if (selectors.length > 0) {
+      postToPreview({ type: 'getComputedColors', selectors: selectors });
+    }
+  };
 }
 
 // Track preview scroll position via postMessage from the blob iframe
 window.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'previewScroll') {
     if (state) state._previewScrollY = e.data.y;
+  }
+  if (e.data && e.data.type === 'computedColors') {
+    // Update state with real rendered colors from iframe
+    const results = e.data.results;
+    state.sections.forEach(section => {
+      section.textElements.forEach(te => {
+        if (results[te.id]) {
+          const realColor = rgbToHex(results[te.id]);
+          // Only update if user hasn't already edited the color
+          if (te.fontColor === te.originalFontColor) {
+            te.fontColor = realColor;
+          }
+          te.originalFontColor = realColor;
+        }
+      });
+    });
+    // Re-render to show correct colors in color pickers
+    renderSections();
   }
 });
 
