@@ -768,26 +768,30 @@
       function tick() {
         if (!autoScroll) return;
         strip.scrollLeft += speed;
-        // Stop at the end
         if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth) {
-          autoScroll = false;
+          stopAuto();
           return;
         }
         raf = requestAnimationFrame(tick);
       }
 
+      function stopAuto() {
+        autoScroll = false;
+        if (raf) cancelAnimationFrame(raf);
+        // Re-enable scroll snap for manual browsing
+        strip.style.scrollSnapType = 'x mandatory';
+      }
+
       // Stop auto-scroll on any user interaction
       ['mousedown', 'touchstart', 'wheel', 'pointerdown'].forEach(evt => {
-        strip.addEventListener(evt, () => {
-          autoScroll = false;
-          if (raf) cancelAnimationFrame(raf);
-        }, { once: true, passive: true });
+        strip.addEventListener(evt, () => { stopAuto(); }, { once: true, passive: true });
       });
 
       // Start when the gallery enters the viewport
       const startObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting && autoScroll) {
+            strip.style.scrollSnapType = 'none';
             tick();
             startObserver.unobserve(strip);
           }
