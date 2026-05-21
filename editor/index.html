@@ -1226,6 +1226,30 @@ const PREVIEW_BRIDGE = `<script>
         if (el) target = el.closest('.strip-item') || el.parentElement || el;
       }
       if (target) target.style.marginBottom = d.spacingBelow + 'px';
+    } else if (d.type === 'updateImageAlignment') {
+      var el = document.querySelector(d.selector);
+      if (el) {
+        if (d.isBgImage) {
+          el.style.backgroundPosition = d.alignment + ' center';
+        } else {
+          var imgParent = el.parentElement;
+          if (imgParent) imgParent.style.textAlign = d.alignment;
+          if (d.alignment === 'center') {
+            el.style.display = 'block';
+            el.style.marginLeft = 'auto';
+            el.style.marginRight = 'auto';
+          } else if (d.alignment === 'left') {
+            el.style.marginLeft = '0';
+            el.style.marginRight = 'auto';
+          } else {
+            el.style.marginLeft = 'auto';
+            el.style.marginRight = '0';
+          }
+        }
+      }
+    } else if (d.type === 'updateImageVerticalOffset') {
+      var el = document.querySelector(d.selector);
+      if (el) el.style.marginTop = d.verticalOffset + 'px';
     }
   });
   // Report scroll position to parent on scroll so parent can restore it
@@ -1448,7 +1472,10 @@ function parseHtml(html) {
     // Find text elements
     const textElements = [];
     el.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, blockquote, figcaption, cite, em, strong, li, .tagline, .subtitle, .quote-text, .caption, .award-label, .tl-text, .tl-heading, .tl-year, .hook-text, .hero-tagline, .hero-author, .hero-subtitle, .section-label').forEach(textEl => {
-      const text = textEl.textContent.replace(/\s+/g, ' ').trim();
+      // Preserve line breaks: convert <br> tags to newlines, then clean up
+      const tempClone = textEl.cloneNode(true);
+      tempClone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      const text = tempClone.textContent.replace(/[ \t]+/g, ' ').replace(/\n /g, '\n').replace(/ \n/g, '\n').trim();
       if (!text || text.length < 2) return;
       // Skip if this is just a container for other elements we'll capture
       if (textEl.querySelector('h1, h2, h3, h4, h5, h6, p')) return;
@@ -1515,6 +1542,23 @@ function parseHtml(html) {
       const imgWidthMatch = imgStyle.match(/width:\s*(\d+)%/);
       const imgScale = imgWidthMatch ? parseInt(imgWidthMatch[1], 10) : 100;
 
+      // Parse alignment from style
+      const imgAlignStyle = img.getAttribute('style') || '';
+      let imgAlign = 'center';
+      if (imgAlignStyle.match(/object-position:\s*left/)) imgAlign = 'left';
+      else if (imgAlignStyle.match(/object-position:\s*right/)) imgAlign = 'right';
+      // Also check parent text-align
+      const imgParent = img.parentElement;
+      if (imgParent) {
+        const parentStyle = imgParent.getAttribute('style') || '';
+        if (parentStyle.match(/text-align:\s*left/)) imgAlign = 'left';
+        else if (parentStyle.match(/text-align:\s*right/)) imgAlign = 'right';
+      }
+
+      // Parse vertical offset from margin-top
+      const imgMtMatch = imgAlignStyle.match(/margin-top:\s*(-?\d+)px/);
+      const imgVertOffset = imgMtMatch ? parseInt(imgMtMatch[1], 10) : 0;
+
       imageElements.push({
         id: `img-${imageElements.length}`,
         selector,
@@ -1524,6 +1568,10 @@ function parseHtml(html) {
         originalAlt: alt,
         imageScale: imgScale,
         originalImageScale: imgScale,
+        alignment: imgAlign,
+        originalAlignment: imgAlign,
+        verticalOffset: imgVertOffset,
+        originalVerticalOffset: imgVertOffset,
         spacingBelow: 0,
         originalSpacingBelow: 0,
         newFileBase64: null,
@@ -1554,6 +1602,10 @@ function parseHtml(html) {
         isBgImage: true,
         imageScale: bgScale,
         originalImageScale: bgScale,
+        alignment: 'center',
+        originalAlignment: 'center',
+        verticalOffset: 0,
+        originalVerticalOffset: 0,
         spacingBelow: 0,
         originalSpacingBelow: 0,
         newFileBase64: null,
@@ -1749,7 +1801,7 @@ function renderEditor() {
   }
   // Show deleted banner for deleted sections
   if (section.deleted) {
-    editor.innerHTML = '<div class="section-deleted-banner"><p>This section has been marked for deletion.</p><p style="color:var(--text-dim);font-size:12px;margin-bottom:10px;">It will be removed when you Apply or Deploy.</p><button onclick="restoreSection(\'' + section.id + '\')">Restore Section</button></div>';
+    col.innerHTML = '<div class="section-deleted-banner"><p>This section has been marked for deletion.</p><p style="color:var(--text-dim);font-size:12px;margin-bottom:10px;">It will be removed when you Apply or Deploy.</p><button onclick="restoreSection(\'' + section.id + '\')">Restore Section</button></div>';
     return;
   }
 
@@ -1799,7 +1851,7 @@ function renderEditor() {
         <span class="el-tag">${te.tag}</span>
         ${anyChange ? '<span class="el-changed">Modified</span>' : ''}
       </div>
-      <textarea data-section="${section.id}" data-element="${te.id}" data-type="text" rows="${Math.max(2, Math.ceil(te.content.length / 60))}"
+      <textarea data-section="${section.id}" data-element="${te.id}" data-type="text" rows="${Math.max(2, te.content.split('\\n').length + 1, Math.ceil(te.content.length / 60))}"
         oninput="handleTextEdit(this)" onfocus="handleTextEditFocus(this)" onblur="handleTextEditBlur()">${escapeHtml(te.content)}</textarea>
       <div class="font-size-control">
         <span>Size</span>
@@ -1854,7 +1906,7 @@ function renderEditor() {
 
   const visibleImages = section.imageElements.filter(x => !x.deleted);
   section.imageElements.forEach((ie, i) => {
-    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale || ie.spacingBelow !== ie.originalSpacingBelow;
+    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale || ie.alignment !== ie.originalAlignment || ie.verticalOffset !== ie.originalVerticalOffset || ie.spacingBelow !== ie.originalSpacingBelow;
     const imgSrc = ie.newFileBase64 ?
       'data:image/jpeg;base64,' + ie.newFileBase64 :
       resolveImageUrl(ie.src);
@@ -1889,6 +1941,22 @@ function renderEditor() {
       html += '            oninput="handleImageScale(\'' + section.id + '\',\'' + ie.id + '\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'%\'">';
       html += '          <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;' + (ie.imageScale !== ie.originalImageScale ? 'color:#e67e22;' : '') + '">' + ie.imageScale + '%</span>';
       html += '        </div>';
+      html += '        <div style="margin:6px 0;display:flex;align-items:center;gap:8px;">';
+      html += '          <label style="font-size:11px;color:#888;white-space:nowrap;">Align:</label>';
+      html += '          <div style="display:flex;gap:2px;">';
+      html += '            <button style="padding:2px 8px;font-size:11px;border:1px solid ' + (ie.alignment === 'left' ? '#e67e22' : '#555') + ';background:' + (ie.alignment === 'left' ? '#2a1a0a' : '#1a1a2e') + ';color:#eee;border-radius:3px 0 0 3px;cursor:pointer;" onclick="handleImageAlignment(\'' + section.id + '\',\'' + ie.id + '\',\'left\')">Left</button>';
+      html += '            <button style="padding:2px 8px;font-size:11px;border:1px solid ' + (ie.alignment === 'center' ? '#e67e22' : '#555') + ';background:' + (ie.alignment === 'center' ? '#2a1a0a' : '#1a1a2e') + ';color:#eee;cursor:pointer;" onclick="handleImageAlignment(\'' + section.id + '\',\'' + ie.id + '\',\'center\')">Centre</button>';
+      html += '            <button style="padding:2px 8px;font-size:11px;border:1px solid ' + (ie.alignment === 'right' ? '#e67e22' : '#555') + ';background:' + (ie.alignment === 'right' ? '#2a1a0a' : '#1a1a2e') + ';color:#eee;border-radius:0 3px 3px 0;cursor:pointer;" onclick="handleImageAlignment(\'' + section.id + '\',\'' + ie.id + '\',\'right\')">Right</button>';
+      html += '          </div>';
+      html += '        </div>';
+      html += '        <div style="margin:6px 0;display:flex;align-items:center;gap:8px;">';
+      html += '          <label style="font-size:11px;color:#888;white-space:nowrap;">V-Offset:</label>';
+      html += '          <input type="range" min="-100" max="100" step="5" value="' + ie.verticalOffset + '"';
+      html += '            style="flex:1;accent-color:' + (ie.verticalOffset !== ie.originalVerticalOffset ? '#e67e22' : '#3498db') + ';"';
+      html += '            oninput="handleImageVerticalOffset(\'' + section.id + '\',\'' + ie.id + '\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'px\'">';
+      html += '          <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;' + (ie.verticalOffset !== ie.originalVerticalOffset ? 'color:#e67e22;' : '') + '">' + ie.verticalOffset + 'px</span>';
+      html += '        </div>';
+      
       html += '        <button class="swap-btn" onclick="startImageSwap(\'' + section.id + '\',\'' + ie.id + '\')">Swap</button>';
       html += '        <button class="delete-btn" onclick="deleteImage(\'' + section.id + '\',\'' + ie.id + '\')">Delete</button>';
       html += '      </div>';
@@ -2191,6 +2259,8 @@ function resetElement(sectionId, elementId, type) {
       ie.src = ie.originalSrc;
       ie.alt = ie.originalAlt;
       ie.imageScale = ie.originalImageScale;
+          ie.alignment = ie.originalAlignment;
+          ie.verticalOffset = ie.originalVerticalOffset;
       ie.spacingBelow = ie.originalSpacingBelow;
       ie.newFileBase64 = null;
       ie.newFileName = null;
@@ -2467,6 +2537,38 @@ function applyChanges() {
               }
             }
           } catch (e) { console.warn('Image scale apply failed:', ie.selector, e); }
+        }
+        if (!ie.deleted && ie.alignment !== ie.originalAlignment) {
+          try {
+            const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
+            if (el) {
+              if (ie.isBgImage) {
+                el.style.backgroundPosition = ie.alignment + ' center';
+              } else {
+                const imgParent = el.parentElement;
+                if (imgParent) imgParent.style.textAlign = ie.alignment;
+                if (ie.alignment === 'center') {
+                  el.style.display = 'block';
+                  el.style.marginLeft = 'auto';
+                  el.style.marginRight = 'auto';
+                } else if (ie.alignment === 'left') {
+                  el.style.marginLeft = '0';
+                  el.style.marginRight = 'auto';
+                } else {
+                  el.style.marginLeft = 'auto';
+                  el.style.marginRight = '0';
+                }
+              }
+            }
+          } catch (e) { console.warn('Image alignment apply failed:', ie.selector, e); }
+        }
+        if (!ie.deleted && ie.verticalOffset !== ie.originalVerticalOffset) {
+          try {
+            const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
+            if (el) {
+              el.style.marginTop = ie.verticalOffset + 'px';
+            }
+          } catch (e) { console.warn('Image offset apply failed:', ie.selector, e); }
         }
         if (ie.spacingBelow !== ie.originalSpacingBelow) {
           try {
@@ -2794,6 +2896,32 @@ async function deploySite() {
             }
             deployLog.imageScale++;
             console.log('[Deploy] Image scale changed:', ie.selector || ie.originalSrc, '→', ie.imageScale + '%');
+          }
+          // Deploy alignment change
+          if (ie.alignment !== ie.originalAlignment) {
+            if (ie.isBgImage) {
+              el.style.backgroundPosition = ie.alignment + ' center';
+            } else {
+              const imgParent = el.parentElement;
+              if (imgParent) imgParent.style.textAlign = ie.alignment;
+              if (ie.alignment === 'center') {
+                el.style.display = 'block';
+                el.style.marginLeft = 'auto';
+                el.style.marginRight = 'auto';
+              } else if (ie.alignment === 'left') {
+                el.style.marginLeft = '0';
+                el.style.marginRight = 'auto';
+              } else {
+                el.style.marginLeft = 'auto';
+                el.style.marginRight = '0';
+              }
+            }
+            console.log('[Deploy] Image alignment changed:', ie.selector || ie.originalSrc, '→', ie.alignment);
+          }
+          // Deploy vertical offset change
+          if (ie.verticalOffset !== ie.originalVerticalOffset) {
+            el.style.marginTop = ie.verticalOffset + 'px';
+            console.log('[Deploy] Image vertical offset:', ie.selector || ie.originalSrc, '→', ie.verticalOffset + 'px');
           }
           if (ie.spacingBelow !== ie.originalSpacingBelow) {
             const target = el.closest('.strip-item') || el.parentElement || el;
@@ -3426,6 +3554,8 @@ function resetImageScale(sectionId, elementId) {
   const ie = section.imageElements.find(i => i.id === elementId);
   if (!ie) return;
   ie.imageScale = ie.originalImageScale;
+          ie.alignment = ie.originalAlignment;
+          ie.verticalOffset = ie.originalVerticalOffset;
   updateChangeCount();
   renderSections();
   renderEditor();
@@ -3613,19 +3743,38 @@ document.addEventListener('keydown', function(e) {
 });
 
     // Warn user before leaving with unsaved changes
-    window.addEventListener('beforeunload', function(e) {
-      const hasChanges = document.querySelectorAll('.element-group.changed').length > 0;
-      const hasNewMedia = sections && sections.some(s => s.addedMedia && s.addedMedia.length > 0);
-      if (hasChanges || hasNewMedia) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    });
-</script>
-</body>
-</html>
+
+    function handleImageAlignment(sectionId, imageId, alignment) {
+      const section = state.sections.find(s => s.id === sectionId);
+      if (!section) return;
+      const ie = section.imageElements.find(e => e.id === imageId);
+      if (!ie) return;
+      ie.alignment = alignment;
+      postToPreview({
+        type: 'updateImageAlignment',
+        selector: ie.selector,
+        isBgImage: ie.isBgImage || false,
+        alignment: alignment
+      });
+      renderEditor();
+    }
+
+    function handleImageVerticalOffset(sectionId, imageId, value) {
+      const section = state.sections.find(s => s.id === sectionId);
+      if (!section) return;
+      const ie = section.imageElements.find(e => e.id === imageId);
+      if (!ie) return;
+      ie.verticalOffset = parseInt(value);
+      postToPreview({
+        type: 'updateImageVerticalOffset',
+        selector: ie.selector,
+        isBgImage: ie.isBgImage || false,
+        verticalOffset: ie.verticalOffset
+      });
+    }
+
     function handleElementSpacing(sectionId, elementId, type, value) {
-      const section = sections.find(s => s.id === sectionId);
+      const section = state.sections.find(s => s.id === sectionId);
       if (!section) return;
       const val = parseInt(value);
       let selector = '';
@@ -3645,4 +3794,14 @@ document.addEventListener('keydown', function(e) {
       renderSections();
     }
 
-
+    window.addEventListener('beforeunload', function(e) {
+      const hasChanges = document.querySelectorAll('.element-group.changed').length > 0;
+      const hasNewMedia = state.sections && state.sections.some(s => s.addedMedia && s.addedMedia.length > 0);
+      if (hasChanges || hasNewMedia) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+</script>
+</body>
+</html>
