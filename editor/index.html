@@ -1140,10 +1140,7 @@ const PREVIEW_BRIDGE = `<script>
       (document.scrollingElement || document.documentElement).scrollTop = d.y;
     } else if (d.type === 'updateText') {
       var el = document.querySelector(d.selector);
-      if (el) {
-        var safe = d.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-        el.innerHTML = safe;
-      }
+      if (el) el.textContent = d.value;
     } else if (d.type === 'updateAlt') {
       var el = document.querySelector(d.selector);
       if (el) el.setAttribute('alt', d.value);
@@ -1161,28 +1158,6 @@ const PREVIEW_BRIDGE = `<script>
     } else if (d.type === 'updateFontColor') {
       var el = document.querySelector(d.selector);
       if (el) el.style.color = d.value;
-    } else if (d.type === 'updateImageAlign') {
-      var el = document.querySelector(d.selector);
-      if (el) {
-        el.style.removeProperty('float');
-        el.style.removeProperty('margin-left');
-        el.style.removeProperty('margin-right');
-        el.style.removeProperty('display');
-        el.style.removeProperty('margin-bottom');
-        if (d.value === 'left') {
-          el.style.float = 'left';
-          el.style.marginRight = '20px';
-          el.style.marginBottom = '10px';
-        } else if (d.value === 'right') {
-          el.style.float = 'right';
-          el.style.marginLeft = '20px';
-          el.style.marginBottom = '10px';
-        } else if (d.value === 'center') {
-          el.style.display = 'block';
-          el.style.marginLeft = 'auto';
-          el.style.marginRight = 'auto';
-        }
-      }
     } else if (d.type === 'updateImageScale') {
       var el = document.querySelector(d.selector);
       if (!el) return;
@@ -1388,14 +1363,7 @@ function parseHtml(html) {
     // Find text elements
     const textElements = [];
     el.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, blockquote, figcaption, cite, em, strong, li, .tagline, .subtitle, .quote-text, .caption, .award-label, .tl-text, .tl-heading, .tl-year, .hook-text, .hero-tagline, .hero-author, .hero-subtitle, .section-label').forEach(textEl => {
-      const text = (function(el) {
-            var h = el.innerHTML;
-            h = h.replace(/<br\s*\/?>/gi, '\n');
-            h = h.replace(/<[^>]+>/g, '');
-            h = h.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
-            h = h.replace(/[^\S\n]+/g, ' ');
-            return h.split('\n').map(function(l) { return l.trim(); }).join('\n').trim();
-          })(textEl);
+      const text = textEl.textContent.replace(/\s+/g, ' ').trim();
       if (!text || text.length < 2) return;
       // Skip if this is just a container for other elements we'll capture
       if (textEl.querySelector('h1, h2, h3, h4, h5, h6, p')) return;
@@ -1460,13 +1428,6 @@ function parseHtml(html) {
       const imgWidthMatch = imgStyle.match(/width:\s*(\d+)%/);
       const imgScale = imgWidthMatch ? parseInt(imgWidthMatch[1], 10) : 100;
 
-      // Parse alignment from inline style
-      const imgAlignStyle = img.getAttribute('style') || '';
-      let imgAlign = 'none';
-      if (/float:\s*left/i.test(imgAlignStyle)) imgAlign = 'left';
-      else if (/float:\s*right/i.test(imgAlignStyle)) imgAlign = 'right';
-      else if (/margin-left:\s*auto/i.test(imgAlignStyle) && /margin-right:\s*auto/i.test(imgAlignStyle)) imgAlign = 'center';
-
       imageElements.push({
         id: `img-${imageElements.length}`,
         selector,
@@ -1476,8 +1437,6 @@ function parseHtml(html) {
         originalAlt: alt,
         imageScale: imgScale,
         originalImageScale: imgScale,
-        imageAlign: imgAlign,
-        originalImageAlign: imgAlign,
         newFileBase64: null,
         newFileName: null
       });
@@ -1661,7 +1620,6 @@ function countSectionChanges(section) {
   section.imageElements.forEach(ie => {
     if (ie.deleted || ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
     if (ie.imageScale !== ie.originalImageScale) count++;
-    if (ie.imageAlign !== ie.originalImageAlign) count++;
   });
   if (section.addedMedia && section.addedMedia.length > 0) {
     count += section.addedMedia.length;
@@ -1787,7 +1745,7 @@ function renderEditor() {
 
   const visibleImages = section.imageElements.filter(x => !x.deleted);
   section.imageElements.forEach((ie, i) => {
-    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale || ie.imageAlign !== ie.originalImageAlign;
+    const changed = ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64 || ie.imageScale !== ie.originalImageScale;
     const imgSrc = ie.newFileBase64 ?
       'data:image/jpeg;base64,' + ie.newFileBase64 :
       resolveImageUrl(ie.src);
@@ -1822,17 +1780,6 @@ function renderEditor() {
       html += '            oninput="handleImageScale(\'' + section.id + '\',\'' + ie.id + '\',parseInt(this.value));this.nextElementSibling.textContent=this.value+\'%\'">';
       html += '          <span style="font-size:12px;font-weight:600;min-width:40px;text-align:right;' + (ie.imageScale !== ie.originalImageScale ? 'color:#e67e22;' : '') + '">' + ie.imageScale + '%</span>';
       html += '        </div>';
-      // Image alignment buttons (skip for bg images)
-      if (!ie.isBgImage) {
-        html += '        <div style="display:flex;gap:4px;align-items:center;margin-top:4px;">';
-        html += '          <span style="font-size:11px;color:var(--text-dim);margin-right:2px;">Align:</span>';
-        ['left','center','right','none'].forEach(function(a) {
-          var label = a === 'none' ? 'Auto' : a.charAt(0).toUpperCase() + a.slice(1);
-          var active = ie.imageAlign === a;
-          html += '          <button style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid ' + (active ? 'var(--accent)' : 'var(--border)') + ';background:' + (active ? 'var(--accent)' : 'transparent') + ';color:' + (active ? '#fff' : 'var(--text)') + ';cursor:pointer;" onclick="handleImageAlign(\'' + section.id + '\',\'' + ie.id + '\',\'' + a + '\')">' + label + '</button>';
-        });
-        html += '        </div>';
-      }
       html += '        <button class="swap-btn" onclick="startImageSwap(\'' + section.id + '\',\'' + ie.id + '\')">Swap</button>';
       html += '        <button class="delete-btn" onclick="deleteImage(\'' + section.id + '\',\'' + ie.id + '\')">Delete</button>';
       html += '      </div>';
@@ -2308,19 +2255,14 @@ function applyChanges() {
           try {
             const el = doc.querySelector(te.selector);
             if (el) {
-              if (te.content.includes('\n')) {
-                var safe = te.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-                el.innerHTML = safe;
+              const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+              const textNodes = [];
+              let node;
+              while (node = walker.nextNode()) textNodes.push(node);
+              if (textNodes.length === 1) {
+                textNodes[0].textContent = te.content;
               } else {
-                const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-                const textNodes = [];
-                let node;
-                while (node = walker.nextNode()) textNodes.push(node);
-                if (textNodes.length === 1) {
-                  textNodes[0].textContent = te.content;
-                } else {
-                  el.textContent = te.content;
-                }
+                el.textContent = te.content;
               }
             }
           } catch (e) { console.warn('Selector failed:', te.selector, e); }
@@ -2347,26 +2289,6 @@ function applyChanges() {
 
       // Apply image scale changes
       section.imageElements.forEach(ie => {
-        // Apply image alignment
-        if (!ie.deleted && ie.imageAlign !== ie.originalImageAlign) {
-          try {
-            const el = doc.querySelector(ie.selector);
-            if (el) {
-              el.style.removeProperty('float');
-              el.style.removeProperty('margin-left');
-              el.style.removeProperty('margin-right');
-              el.style.removeProperty('display');
-              el.style.removeProperty('margin-bottom');
-              if (ie.imageAlign === 'left') {
-                el.style.float = 'left'; el.style.marginRight = '20px'; el.style.marginBottom = '10px';
-              } else if (ie.imageAlign === 'right') {
-                el.style.float = 'right'; el.style.marginLeft = '20px'; el.style.marginBottom = '10px';
-              } else if (ie.imageAlign === 'center') {
-                el.style.display = 'block'; el.style.marginLeft = 'auto'; el.style.marginRight = 'auto';
-              }
-            }
-          } catch(e) { console.warn('Align apply failed:', ie.selector, e); }
-        }
         if (!ie.deleted && ie.imageScale !== ie.originalImageScale) {
           try {
             const el = ie.isBgImage ? doc.querySelector(ie.selector) : findImageBySrc(doc, ie.originalSrc, section.outerSelector);
@@ -2401,7 +2323,7 @@ function applyChanges() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.imageAlign === ie.originalImageAlign) return;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
@@ -2598,19 +2520,15 @@ async function deploySite() {
             const el = doc.querySelector(te.selector);
             if (el) {
               // Walk text nodes to preserve child element structure
-              if (te.content.includes('\n')) {
-                var safe = te.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-                el.innerHTML = safe;
+              const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+              const textNodes = [];
+              let node;
+              while (node = walker.nextNode()) textNodes.push(node);
+              if (textNodes.length === 1) {
+                textNodes[0].textContent = te.content;
               } else {
-                const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-                const textNodes = [];
-                let node;
-                while (node = walker.nextNode()) textNodes.push(node);
-                if (textNodes.length === 1) {
-                  textNodes[0].textContent = te.content;
-                } else {
-                  el.textContent = te.content;
-                }
+                // Fallback: set textContent (strips children but preserves change)
+                el.textContent = te.content;
               }
               deployLog.text++;
               console.log('[Deploy] Text changed:', te.selector, '→', te.content.substring(0, 40));
@@ -2662,7 +2580,7 @@ async function deploySite() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.imageAlign === ie.originalImageAlign) return;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${ie.src}')`));
@@ -2679,26 +2597,6 @@ async function deploySite() {
             }
           }
           // Deploy image scale change
-          // Deploy image alignment
-          if (ie.imageAlign !== ie.originalImageAlign) {
-            try {
-              const el = doc.querySelector(ie.selector);
-              if (el) {
-                el.style.removeProperty('float');
-                el.style.removeProperty('margin-left');
-                el.style.removeProperty('margin-right');
-                el.style.removeProperty('display');
-                el.style.removeProperty('margin-bottom');
-                if (ie.imageAlign === 'left') {
-                  el.style.float = 'left'; el.style.marginRight = '20px'; el.style.marginBottom = '10px';
-                } else if (ie.imageAlign === 'right') {
-                  el.style.float = 'right'; el.style.marginLeft = '20px'; el.style.marginBottom = '10px';
-                } else if (ie.imageAlign === 'center') {
-                  el.style.display = 'block'; el.style.marginLeft = 'auto'; el.style.marginRight = 'auto';
-                }
-              }
-            } catch(e) { console.warn('Align deploy failed:', ie.selector, e); }
-          }
           if (ie.imageScale !== ie.originalImageScale) {
             if (ie.isBgImage) {
               el.style.backgroundSize = ie.imageScale + '%';
@@ -2887,7 +2785,6 @@ async function deploySite() {
       s.imageElements = s.imageElements.filter(ie => !ie.deleted);
       s.imageElements.forEach(ie => {
         ie.originalImageScale = ie.imageScale;
-        ie.originalImageAlign = ie.imageAlign;
         ie.originalSrc = ie.src;
         ie.originalAlt = ie.alt;
         ie.newFileBase64 = null;
@@ -3327,19 +3224,6 @@ function handleImageScale(sectionId, elementId, value) {
   // Live preview
   const selector = ie.selector;
   postToPreview({ type: 'updateImageScale', selector, value: ie.imageScale, isBgImage: !!ie.isBgImage });
-}
-
-function handleImageAlign(sectionId, elementId, align) {
-  const section = state.sections.find(s => s.id === sectionId);
-  if (!section) return;
-  pushUndo('change image alignment');
-  const ie = section.imageElements.find(i => i.id === elementId);
-  if (!ie) return;
-  ie.imageAlign = align;
-  updateChangeCount();
-  renderSections();
-  renderEditor();
-  postToPreview({ type: 'updateImageAlign', selector: ie.selector, value: align });
 }
 
 function resetImageScale(sectionId, elementId) {
