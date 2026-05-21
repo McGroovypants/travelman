@@ -1132,14 +1132,12 @@ const PREVIEW_BRIDGE = `<script>
     if (d.type === 'scrollTo') {
       var el = document.querySelector(d.selector);
       if (!el) return;
-      var offset = d.offset !== undefined ? d.offset : 80;
-      var top = el.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       var orig = el.style.outline;
       el.style.outline = '3px solid #3498db';
       setTimeout(function() { el.style.outline = orig; }, 1500);
     } else if (d.type === 'scrollToY') {
-      window.scrollTo(0, d.y);
+      (document.scrollingElement || document.documentElement).scrollTop = d.y;
     } else if (d.type === 'updateText') {
       var el = document.querySelector(d.selector);
       if (el) {
