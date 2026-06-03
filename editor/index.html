@@ -2236,6 +2236,22 @@ document.getElementById('fileChooser').addEventListener('change', function(e) {
     renderEditor();
     renderSections();
     updateChangeCount();
+    // After swap: focus and highlight the alt text input so user reviews the caption
+    setTimeout(function() {
+      var altInput = document.querySelector('input[data-section="' + sectionId + '"][data-element="' + elementId + '"][data-type="alt"]');
+      if (altInput) {
+        altInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        altInput.focus();
+        altInput.select();
+        altInput.style.outline = '2px solid #e67e22';
+        altInput.style.background = '#fef9e7';
+        altInput.addEventListener('blur', function handler() {
+          altInput.style.outline = '';
+          altInput.style.background = '';
+          altInput.removeEventListener('blur', handler);
+        });
+      }
+    }, 100);
   };
   reader.readAsDataURL(file);
   e.target.value = '';
