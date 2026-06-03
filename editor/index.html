@@ -433,7 +433,10 @@ body.col-resizing iframe { pointer-events: none; }
   flex: 1;
   font-size: 12px;
   color: var(--text-dim);
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 .delete-btn {
   background: none;
@@ -866,6 +869,80 @@ body.col-resizing iframe { pointer-events: none; }
 .font-color-control button:hover {
   background: #2a2a4e;
 }
+
+/* === MOBILE EDITOR (portrait) === */
+.mobile-nav {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.mobile-nav-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mobile-nav-btn:hover { border-color: var(--text-dim); color: var(--text); }
+.mobile-nav-btn.active { border-color: var(--gold); color: var(--gold); }
+.mobile-nav-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .mobile-nav { display: flex; }
+  .editor-body {
+    position: relative;
+  }
+  .editor-body .preview-col,
+  .editor-body .sections-col,
+  .editor-body .editor-col {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    min-width: 0 !important;
+    z-index: 1;
+    transition: transform 0.25s ease;
+  }
+  .editor-body .resize-handle { display: none; }
+  .editor-body .preview-col { z-index: 2; }
+  .editor-body .sections-col { z-index: 3; }
+  .editor-body .editor-col { z-index: 4; }
+
+  /* Default: show sections, hide editor and preview */
+  #editor[data-mobile-view="sections"] .sections-col { transform: translateX(0); }
+  #editor[data-mobile-view="sections"] .editor-col { transform: translateX(100%); }
+  #editor[data-mobile-view="sections"] .preview-col { transform: translateX(-100%); }
+
+  #editor[data-mobile-view="editor"] .sections-col { transform: translateX(-100%); }
+  #editor[data-mobile-view="editor"] .editor-col { transform: translateX(0); }
+  #editor[data-mobile-view="editor"] .preview-col { transform: translateX(-100%); }
+
+  #editor[data-mobile-view="preview"] .sections-col { transform: translateX(-100%); }
+  #editor[data-mobile-view="preview"] .editor-col { transform: translateX(100%); }
+  #editor[data-mobile-view="preview"] .preview-col { transform: translateX(0); }
+
+  .deploy-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .deploy-bar .change-count { font-size: 12px; }
+  .deploy-btn, .apply-btn { padding: 6px 14px; font-size: 12px; }
+  .back-btn { padding: 6px 10px; font-size: 12px; }
+}
 </style>
 </head>
 <body>
@@ -893,6 +970,11 @@ body.col-resizing iframe { pointer-events: none; }
       <h2>Site Editor</h2>
       <span class="site-name" id="siteLabel"></span>
     </div>
+  </div>
+  <div class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-btn" id="mobileBackBtn" onclick="mobileGoTo('sections')">&#9664; Sections</button>
+    <span class="mobile-nav-title" id="mobileTitle"></span>
+    <button class="mobile-nav-btn" id="mobilePreviewBtn" onclick="mobileGoTo('preview')">Preview</button>
   </div>
   <div class="editor-body">
     <div class="preview-col">
@@ -1724,6 +1806,53 @@ async function loadSiteAuto() {
 // ==========================================
 // RENDER SECTION LIST
 // ==========================================
+// === MOBILE NAVIGATION ===
+function isMobileView() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function mobileGoTo(view) {
+  var editor = document.getElementById('editor');
+  editor.setAttribute('data-mobile-view', view);
+  var backBtn = document.getElementById('mobileBackBtn');
+  var previewBtn = document.getElementById('mobilePreviewBtn');
+  var titleEl = document.getElementById('mobileTitle');
+  if (view === 'sections') {
+    backBtn.style.visibility = 'hidden';
+    previewBtn.textContent = 'Preview';
+    titleEl.textContent = 'Sections';
+  } else if (view === 'editor') {
+    backBtn.style.visibility = 'visible';
+    backBtn.innerHTML = '&#9664; Sections';
+    backBtn.onclick = function() { mobileGoTo('sections'); };
+    previewBtn.textContent = 'Preview';
+    previewBtn.onclick = function() { mobileGoTo('preview'); };
+    var section = state.sections.find(function(s) { return s.id === state.selectedSectionId; });
+    titleEl.textContent = section ? section.name : '';
+  } else if (view === 'preview') {
+    backBtn.style.visibility = 'visible';
+    if (state.selectedSectionId) {
+      backBtn.innerHTML = '&#9664; Editor';
+      backBtn.onclick = function() { mobileGoTo('editor'); };
+    } else {
+      backBtn.innerHTML = '&#9664; Sections';
+      backBtn.onclick = function() { mobileGoTo('sections'); };
+    }
+    previewBtn.textContent = 'Full';
+    previewBtn.classList.add('active');
+    titleEl.textContent = 'Preview';
+  }
+  if (view !== 'preview') previewBtn.classList.remove('active');
+}
+
+// Initialise mobile view on load
+(function() {
+  var editor = document.getElementById('editor');
+  if (editor && !editor.hasAttribute('data-mobile-view')) {
+    editor.setAttribute('data-mobile-view', 'sections');
+  }
+})();
+
 function renderSections() {
   const list = document.getElementById('sectionList');
   list.innerHTML = '';
@@ -1737,6 +1866,7 @@ function renderSections() {
       renderSections();
       renderEditor();
       scrollPreviewToSection(section.id);
+      if (isMobileView()) mobileGoTo('editor');
     };
 
     const addedCount = section.addedMedia ? section.addedMedia.length : 0;
