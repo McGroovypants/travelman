@@ -114,6 +114,21 @@ body {
   cursor: pointer;
 }
 .gate-btn:hover { background: var(--gold-dim); }
+.gate-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.gate-remember input[type="checkbox"] {
+  accent-color: var(--gold);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
 
 /* === SETUP SCREEN === */
 #setup {
@@ -956,6 +971,7 @@ body.col-resizing iframe { pointer-events: none; }
     <input type="url" id="siteUrlInput" class="gate-url-input" placeholder="https://yourname.github.io/sitename/" autocomplete="off">
     <label class="gate-label" for="codeInput">Access code</label>
     <input type="password" id="codeInput" class="gate-input" placeholder="••••••••" autocomplete="off">
+    <label class="gate-remember"><input type="checkbox" id="rememberDevice"> Remember this device</label>
     <button class="gate-btn" onclick="checkCode()">Enter</button>
   </div>
 </div>
@@ -997,7 +1013,7 @@ body.col-resizing iframe { pointer-events: none; }
     </div>
   </div>
   <div class="deploy-bar">
-    <button class="back-btn" onclick="location.reload()">Log Out</button>
+    <button class="back-btn" onclick="try{localStorage.removeItem('se_remembered')}catch(e){};location.reload()">Log Out</button>
     <span class="change-count" id="changeCount">No changes</span>
     <button class="apply-btn" id="undoBtn" onclick="performUndo()" disabled style="background:transparent;border:1px solid var(--border);color:var(--text-dim);margin-right:8px;min-width:60px;" title="Nothing to undo">Undo</button>
       <button class="apply-btn" id="applyBtn" onclick="applyChanges()" disabled>Apply</button>
@@ -1166,16 +1182,29 @@ document.getElementById('siteUrlInput').addEventListener('keydown', e => {
   const loc = window.location;
   const domainKey = loc.hostname.replace(/^www\./, '');
   if (CUSTOM_DOMAINS[domainKey]) {
-    // Custom domain: site URL is the root domain
     document.getElementById('siteUrlInput').value = `${loc.protocol}//${loc.hostname}/`;
   } else if (loc.hostname.endsWith('.github.io')) {
     const parts = loc.pathname.split('/').filter(Boolean);
-    // If we're at /reponame/editor/, the site URL is /reponame/
     if (parts.length >= 1) {
       const siteUrl = `${loc.protocol}//${loc.hostname}/${parts[0]}/`;
       document.getElementById('siteUrlInput').value = siteUrl;
     }
   }
+
+  // Auto-login from remembered device credentials
+  try {
+    const saved = localStorage.getItem('se_remembered');
+    if (saved) {
+      const creds = JSON.parse(saved);
+      if (creds.pat && creds.owner && creds.repo) {
+        state.pat = creds.pat;
+        state.owner = creds.owner;
+        state.repo = creds.repo;
+        state.filePath = 'index.html';
+        loadSiteAuto();
+      }
+    }
+  } catch(e) { /* no saved credentials or parse error, show gate normally */ }
 })();
 
 async function checkCode() {
@@ -1208,6 +1237,16 @@ async function checkCode() {
     state.owner = parsed.owner;
     state.repo = parsed.repo;
     state.filePath = 'index.html';
+
+    // Save credentials if "Remember this device" is checked
+    if (document.getElementById('rememberDevice').checked) {
+      try {
+        localStorage.setItem('se_remembered', JSON.stringify({
+          url: urlVal, pat: pat, owner: parsed.owner, repo: parsed.repo
+        }));
+      } catch(e) { /* localStorage unavailable, skip silently */ }
+    }
+
     loadSiteAuto();
   } catch(e) {
     codeInput.classList.add('error');
