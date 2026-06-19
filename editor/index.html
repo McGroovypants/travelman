@@ -983,7 +983,7 @@ body.col-resizing iframe { pointer-events: none; }
 <div id="editor">
   <div class="editor-header">
     <div>
-      <h2>Site Editor</h2>
+      <h2>Site Editor <span id="buildBadge" style="font-size:11px;color:var(--text-dim);font-weight:400;"></span></h2>
       <span class="site-name" id="siteLabel"></span>
     </div>
   </div>
@@ -1013,7 +1013,7 @@ body.col-resizing iframe { pointer-events: none; }
     </div>
   </div>
   <div class="deploy-bar">
-    <button class="back-btn" onclick="try{localStorage.removeItem('se_remembered')}catch(e){};location.reload()">Log Out</button>
+    <button class="back-btn" onclick="try{localStorage.removeItem('se_remembered');sessionStorage.removeItem('se_local_session')}catch(e){};location.reload()">Log Out</button>
     <span class="change-count" id="changeCount">No changes</span>
     <button class="apply-btn" id="undoBtn" onclick="performUndo()" disabled style="background:transparent;border:1px solid var(--border);color:var(--text-dim);margin-right:8px;min-width:60px;" title="Nothing to undo">Undo</button>
       <button class="apply-btn" id="applyBtn" onclick="applyChanges()" disabled>Apply</button>
@@ -1157,6 +1157,8 @@ function show(id) {
   document.getElementById('setup').style.display = 'none';
   document.getElementById('editor').style.display = 'none';
   document.getElementById(id).style.display = id === 'editor' ? 'flex' : 'flex';
+  const bb = document.getElementById('buildBadge');
+  if (bb) bb.textContent = SE_BUILD;
 }
 
 function showLoading(text) {
@@ -1191,6 +1193,26 @@ document.getElementById('siteUrlInput').addEventListener('keydown', e => {
     }
   }
 
+  // LOCALHOST-ONLY: auto-restore login from sessionStorage so hard-refreshes
+  // during local testing don't require re-entering the gate. Never runs on the
+  // live domain, and secrets stay only in this browser tab's session.
+  try {
+    if (_isLocalhost()) {
+      const ls = sessionStorage.getItem('se_local_session');
+      if (ls) {
+        const c = JSON.parse(ls);
+        if (c.pat && c.owner && c.repo) {
+          state.pat = c.pat;
+          state.owner = c.owner;
+          state.repo = c.repo;
+          state.filePath = 'index.html';
+          loadSiteAuto();
+          return;
+        }
+      }
+    }
+  } catch(e) { /* fall through to normal auto-login / gate */ }
+
   // Auto-login from remembered device credentials
   try {
     const saved = localStorage.getItem('se_remembered');
@@ -1206,6 +1228,12 @@ document.getElementById('siteUrlInput').addEventListener('keydown', e => {
     }
   } catch(e) { /* no saved credentials or parse error, show gate normally */ }
 })();
+
+// True only when served from localhost / 127.0.0.1 (local testing).
+function _isLocalhost() {
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+}
 
 async function checkCode() {
   const urlInput = document.getElementById('siteUrlInput');
@@ -1247,6 +1275,15 @@ async function checkCode() {
       } catch(e) { /* localStorage unavailable, skip silently */ }
     }
 
+    // LOCALHOST-ONLY: cache for this tab session so hard-refreshes skip the gate
+    if (_isLocalhost()) {
+      try {
+        sessionStorage.setItem('se_local_session', JSON.stringify({
+          pat: pat, owner: parsed.owner, repo: parsed.repo
+        }));
+      } catch(e) { /* sessionStorage unavailable, skip silently */ }
+    }
+
     loadSiteAuto();
   } catch(e) {
     codeInput.classList.add('error');
@@ -1259,8 +1296,22 @@ async function checkCode() {
 // BLOB PREVIEW — instant local rendering
 // ==========================================
 let currentBlobUrl = null;
+let _iframeReady = false;
+let _previewMsgQueue = [];
 
 // postMessage listener script injected into every blob preview
+// ==========================================
+// VERSION
+// ==========================================
+const SE_BUILD = 'v1.0.0 (2026-06-19)';
+// Debug panel removed for release; kept as a no-op so internal diagnostic
+// calls remain harmless. Set window.__seDebugOn = true in the console to
+// re-enable a lightweight log if ever needed.
+function __seDebugPanel(msg) {
+  if (!window.__seDebugOn) return;
+  try { console.log('[SE]', msg); } catch (e) {}
+}
+
 const PREVIEW_BRIDGE = `<script>
 (function() {
   window.addEventListener('message', function(e) {
@@ -1278,6 +1329,18 @@ const PREVIEW_BRIDGE = `<script>
       window.scrollTo(0, d.y);
     } else if (d.type === 'updateText') {
       var el = document.querySelector(d.selector);
+      // Fallback: if the selector no longer matches (DOM changed after a
+      // rebuild), find the element by its original text content instead.
+      if (!el && d.origValue) {
+        var want = String(d.origValue).replace(/\s+/g, ' ').trim();
+        if (want) {
+          var cands = document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,a,li,blockquote,figcaption,cite,em,strong');
+          for (var ci = 0; ci < cands.length; ci++) {
+            var ctext = (cands[ci].textContent || '').replace(/\s+/g, ' ').trim();
+            if (ctext === want) { el = cands[ci]; break; }
+          }
+        }
+      }
       if (el) {
         if (d.value.indexOf('<br>') !== -1) {
           el.innerHTML = d.value;
@@ -1288,6 +1351,22 @@ const PREVIEW_BRIDGE = `<script>
     } else if (d.type === 'updateAlt') {
       var el = document.querySelector(d.selector);
       if (el) el.setAttribute('alt', d.value);
+    } else if (d.type === 'updateCaption') {
+      var img = document.querySelector(d.selector);
+      if (img) {
+        var wrap = img.closest('.award-item') || img.closest('.strip-item') || img.parentElement;
+        var cap = wrap ? wrap.querySelector('.award-label, .caption, [class*="caption"], [class*="label"], figcaption') : null;
+        if (d.value === '') {
+          if (cap) cap.remove();
+        } else if (cap) {
+          cap.textContent = d.value;
+        } else if (wrap) {
+          cap = document.createElement(d.captionTag || 'p');
+          if (d.captionClass) cap.className = d.captionClass;
+          cap.textContent = d.value;
+          wrap.appendChild(cap);
+        }
+      }
     } else if (d.type === 'updateDisplay') {
       var el = document.querySelector(d.selector);
       if (el) {
@@ -1377,11 +1456,59 @@ const PREVIEW_BRIDGE = `<script>
   window.addEventListener('scroll', function() {
     window.parent.postMessage({ type: 'previewScroll', y: window.scrollY }, '*');
   }, { passive: true });
+  // Build a unique CSS selector path for an element (mirrors the editor's
+  // buildSelector so the parent can match the exact element, even when the
+  // same image filename appears in more than one section).
+  // NOTE: mirrors the editor's buildSelector, which (running on a DOMParser
+  // document) climbs all the way to <html>, producing paths like
+  // "html > body > section:nth-of-type(4) > ... > img". We must match that
+  // exactly, so climb to the root rather than stopping at <body>.
+  function __seSelector(el) {
+    if (!el || el.nodeType !== 1) return '';
+    if (el.id) return '#' + (window.CSS && CSS.escape ? CSS.escape(el.id) : el.id);
+    var path = [];
+    var cur = el;
+    while (cur && cur.nodeType === 1) {
+      var sel = cur.tagName.toLowerCase();
+      if (cur.id) { path.unshift('#' + (window.CSS && CSS.escape ? CSS.escape(cur.id) : cur.id)); break; }
+      if (cur.parentElement) {
+        var sibs = Array.prototype.filter.call(cur.parentElement.children, function(c){ return c.tagName === cur.tagName; });
+        if (sibs.length > 1) { sel += ':nth-of-type(' + (sibs.indexOf(cur) + 1) + ')'; }
+      }
+      path.unshift(sel);
+      cur = cur.parentElement;
+    }
+    return path.join(' > ');
+  }
+  // Click-to-locate: clicking an element in the preview tells the editor to
+  // select that section and highlight the matching field.
+  document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!t) return;
+    var info = { type: 'previewClick' };
+    var img = (t.tagName === 'IMG') ? t : (t.closest ? t.closest('.award-item, .strip-item, .tl-image, figure') : null);
+    if (img && img.tagName !== 'IMG') img = img.querySelector('img');
+    if (img && img.tagName === 'IMG') {
+      info.kind = 'image';
+      info.src = img.getAttribute('src') || '';
+      info.alt = img.getAttribute('alt') || '';
+      info.selector = __seSelector(img);
+    } else {
+      // text element
+      var txt = (t.textContent || '').replace(/\\s+/g, ' ').trim();
+      if (txt) { info.kind = 'text'; info.text = txt.slice(0, 120); info.selector = __seSelector(t); }
+    }
+    if (info.kind) window.parent.postMessage(info, '*');
+  }, true);
 })();
 <\/script>`;
 
 function loadBlobPreview(html) {
   if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+
+  // Mark iframe as not ready — messages will be queued
+  _iframeReady = false;
+  _previewMsgQueue = [];
 
   const baseUrl = getSiteBaseUrl();
 
@@ -1407,18 +1534,17 @@ function loadBlobPreview(html) {
 
   // Restore scroll position after load using the Y value saved from scroll events
   const savedY = state._previewScrollY || 0;
-  iframe.addEventListener('load', function onLoad() {
-    iframe.removeEventListener('load', onLoad);
+
+  // Set onload BEFORE setting src to avoid race condition
+  iframe.onload = function() {
+    // Mark iframe as ready and flush queued messages
+    _iframeReady = true;
     if (savedY > 10) {
       setTimeout(function() {
         iframe.contentWindow.postMessage({ type: 'scrollToY', y: savedY }, '*');
       }, 150);
     }
-  });
-
-  iframe.src = currentBlobUrl;
-  // After iframe loads, request actual computed colors
-  iframe.onload = function() {
+    // Request actual computed colors
     const selectors = [];
     state.sections.forEach(section => {
       section.textElements.forEach(te => {
@@ -1431,11 +1557,20 @@ function loadBlobPreview(html) {
     if (selectors.length > 0) {
       postToPreview({ type: 'getComputedColors', selectors: selectors });
     }
+    // Flush any messages that were queued while iframe was loading
+    const queued = _previewMsgQueue.splice(0);
+    queued.forEach(function(msg) { postToPreview(msg); });
   };
+
+  iframe.src = currentBlobUrl;
 }
 
 // Track preview scroll position via postMessage from the blob iframe
 window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'previewClick') {
+    handlePreviewClick(e.data);
+    return;
+  }
   if (e.data && e.data.type === 'previewScroll') {
     if (state) state._previewScrollY = e.data.y;
   }
@@ -1600,8 +1735,10 @@ function parseHtml(html) {
       if (!text || text.length < 2) return;
       // Skip if this is just a container for other elements we'll capture
       if (textEl.querySelector('h1, h2, h3, h4, h5, h6, p')) return;
-      // Skip captions inside gallery strip-items (they belong to the image, not standalone)
+      // Skip captions inside gallery wrappers — they belong to an image and are
+      // edited via the image's Caption field, not as a standalone text box.
       if (textEl.closest('.strip-item')) return;
+      if (textEl.closest('.award-item')) return;
 
       const elTag = textEl.tagName.toLowerCase();
       const selector = buildSelector(textEl);
@@ -1680,6 +1817,37 @@ function parseHtml(html) {
       const imgMtMatch = imgAlignStyle.match(/margin-top:\s*(-?\d+)px/);
       const imgVertOffset = imgMtMatch ? parseInt(imgMtMatch[1], 10) : 0;
 
+      // === CAPTION LINKING ===
+      // Detect a visible caption that belongs to this image. Only gallery
+      // wrappers support captions: .award-item (p.award-label) and
+      // .strip-item (div.caption). Other images are decorative (alt-only).
+      let captionText = '', captionSelector = null, captionTag = 'p', captionClass = '', captionSupported = false;
+      let capFontSize = 16, capFontColor = '#ffffff', capFontFamily = '';
+      const awardWrap = img.closest('.award-item');
+      const stripWrap = img.closest('.strip-item');
+      if (awardWrap) { captionSupported = true; captionTag = 'p'; captionClass = 'award-label'; }
+      else if (stripWrap) { captionSupported = true; captionTag = 'div'; captionClass = 'caption'; }
+      if (captionSupported) {
+        const wrap = awardWrap || stripWrap;
+        const capEl = wrap.querySelector('.award-label, .caption, [class*="caption"], [class*="label"], figcaption');
+        if (capEl) {
+          const capClone = capEl.cloneNode(true);
+          capClone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+          captionText = capClone.textContent.replace(/[ \t]+/g, ' ').replace(/\n /g, '\n').replace(/ \n/g, '\n').trim();
+          captionSelector = buildSelector(capEl);
+          captionTag = capEl.tagName.toLowerCase();
+          captionClass = capEl.className || captionClass;
+          const cfs = (capEl.getAttribute('style') || '').match(/font-size:\s*(\d+)/);
+          if (cfs) capFontSize = parseInt(cfs[1], 10);
+          const cfc = (capEl.getAttribute('style') || '').match(/(?:^|;)\s*color:\s*([^;]+)/);
+          if (cfc) capFontColor = rgbToHex(cfc[1].trim());
+          const cff = (capEl.getAttribute('style') || '').match(/font-family:\s*([^;]+)/);
+          if (cff) capFontFamily = cff[1].trim();
+        }
+      }
+      // alt is "linked" to caption when it equals the caption (or no caption yet)
+      const altLinked = captionSupported && (alt === captionText || captionText === '');
+
       imageElements.push({
         id: `img-${imageElements.length}`,
         selector,
@@ -1696,7 +1864,23 @@ function parseHtml(html) {
         spacingBelow: 0,
         originalSpacingBelow: 0,
         newFileBase64: null,
-        newFileName: null
+        newFileName: null,
+        // caption linkage
+        captionSupported,
+        captionText,
+        originalCaptionText: captionText,
+        captionSelector,
+        captionTag,
+        captionClass,
+        altLinked,
+        captionFontSize: capFontSize,
+        originalCaptionFontSize: capFontSize,
+        captionFontColor: capFontColor,
+        originalCaptionFontColor: capFontColor,
+        captionFontFamily: capFontFamily,
+        originalCaptionFontFamily: capFontFamily,
+        captionSpacingBelow: 0,
+        originalCaptionSpacingBelow: 0
       });
     });
 
@@ -1941,6 +2125,7 @@ function countSectionChanges(section) {
     if (ie.deleted || ie.src !== ie.originalSrc || ie.alt !== ie.originalAlt || ie.newFileBase64) count++;
     if (ie.imageScale !== ie.originalImageScale) count++;
     if (ie.spacingBelow !== ie.originalSpacingBelow) count++;
+    if (ie.captionSupported && ie.captionText !== ie.originalCaptionText) count++;
   });
   if (section.addedMedia && section.addedMedia.length > 0) {
     count += section.addedMedia.length;
@@ -2129,10 +2314,36 @@ function renderEditor() {
       html += '        <button class="swap-btn" onclick="startImageSwap(\'' + section.id + '\',\'' + ie.id + '\')">Swap</button>';
       html += '        <button class="delete-btn" onclick="deleteImage(\'' + section.id + '\',\'' + ie.id + '\')">Delete</button>';
       html += '      </div>';
-      html += '      <div style="margin-top:6px;">';
-      html += '        <input type="text" data-section="' + section.id + '" data-element="' + ie.id + '" data-type="alt"';
-      html += '          oninput="handleAltEdit(this)" onfocus="handleAltEditFocus(this)" onblur="handleAltEditBlur()" value="' + escapeAttr(ie.alt) + '" placeholder="Alt text">';
-      html += '      </div>';
+      // === CAPTION (visible text under photo) — only for caption-supporting wrappers ===
+      if (ie.captionSupported) {
+        const capChanged = ie.captionText !== ie.originalCaptionText;
+        html += '      <div style="margin-top:8px;">';
+        html += '        <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Caption (shown under photo)' + (capChanged ? ' <span style="color:#e67e22;">• edited</span>' : '') + '</label>';
+        html += '        <input type="text" data-section="' + section.id + '" data-element="' + ie.id + '" data-type="caption"';
+        html += '          oninput="handleCaptionEdit(this)" onfocus="handleCaptionEditFocus(this)" onblur="handleCaptionEditBlur()" value="' + escapeAttr(ie.captionText) + '" placeholder="Type a caption (leave blank for none)">';
+        html += '      </div>';
+      }
+      // === ALT TEXT (accessibility — not shown on page) ===
+      // For caption-supporting images, collapse alt behind a toggle so the
+      // client isn't shown duplicated text. Expanded only when user opens it.
+      if (ie.captionSupported && !ie._altOpen) {
+        html += '      <div style="margin-top:6px;">';
+        html += '        <span style="font-size:11px;color:#777;cursor:pointer;text-decoration:underline;" onclick="toggleAltEdit(\'' + section.id + '\',\'' + ie.id + '\')">Alt text (click to edit)</span>';
+        html += '      </div>';
+      } else {
+        html += '      <div style="margin-top:6px;">';
+        html += '        <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Alt text (accessibility — not shown on page)';
+        if (ie.captionSupported) {
+          html += ie.altLinked
+            ? ' <span style="color:#3498db;">↻ mirrors caption</span>'
+            : ' <span style="color:#888;cursor:pointer;text-decoration:underline;" onclick="relinkAlt(\'' + section.id + '\',\'' + ie.id + '\')">reset to caption</span>';
+          html += ' <span style="color:#777;cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="toggleAltEdit(\'' + section.id + '\',\'' + ie.id + '\')">hide</span>';
+        }
+        html += '</label>';
+        html += '        <input type="text" data-section="' + section.id + '" data-element="' + ie.id + '" data-type="alt"';
+        html += '          oninput="handleAltEdit(this)" onfocus="handleAltEditFocus(this)" onblur="handleAltEditBlur()" value="' + escapeAttr(ie.alt) + '" placeholder="Describe the image">';
+        html += '      </div>';
+      }
       html += '      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">';
       html += '        <label style="font-size:11px;color:#888;white-space:nowrap;">Space below:</label>';
       html += '        <input type="range" min="0" max="80" step="2" value="' + ie.spacingBelow + '"';
@@ -2266,10 +2477,14 @@ function handleTextEdit(el) {
   if (!section) return;
   const te = section.textElements.find(t => t.id === elementId);
   if (te) {
+    // Text currently shown in the preview (for selector-fallback matching).
+    // Starts as the original content, then tracks each value we send.
+    const prevDisplayed = (te._lastPreviewText !== undefined) ? te._lastPreviewText : te.originalContent;
     te.content = value;
     // Convert newlines to <br> for preview display
     const previewValue = value.replace(/\n/g, '<br>');
-    updatePreviewInstant(te.selector, 'text', previewValue);
+    updatePreviewInstant(te.selector, 'text', previewValue, prevDisplayed);
+    te._lastPreviewText = value;
   }
   renderSections();
   updateChangeCount();
@@ -2298,10 +2513,80 @@ function handleAltEdit(el) {
   const ie = section.imageElements.find(i => i.id === elementId);
   if (ie) {
     ie.alt = value;
+    // Manual alt edit unlinks it from the caption (so it keeps its own value).
+    if (ie.captionSupported && ie.altLinked) {
+      ie.altLinked = false;
+      renderEditor(); // refresh the "mirrors caption" indicator
+    }
     updatePreviewInstant(ie.selector, 'alt', value);
   }
   renderSections();
   updateChangeCount();
+}
+
+// === CAPTION EDITING ===
+let _undoPushedForCaption = null;
+
+function handleCaptionEditFocus(el) {
+  const key = el.dataset.section + ':' + el.dataset.element;
+  if (_undoPushedForCaption !== key) {
+    pushUndo('edit caption');
+    _undoPushedForCaption = key;
+  }
+}
+
+function handleCaptionEditBlur() {
+  _undoPushedForCaption = null;
+}
+
+function handleCaptionEdit(el) {
+  const sectionId = el.dataset.section;
+  const elementId = el.dataset.element;
+  const value = el.value;
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (ie) {
+    ie.captionText = value;
+    // Live preview: create/update/remove the visible caption next to the image.
+    postToPreview({
+      type: 'updateCaption',
+      selector: ie.selector,
+      value: value,
+      captionTag: ie.captionTag,
+      captionClass: ie.captionClass
+    });
+    // If alt is linked, mirror caption into alt.
+    if (ie.altLinked) {
+      ie.alt = value;
+      updatePreviewInstant(ie.selector, 'alt', value);
+    }
+  }
+  renderSections();
+  updateChangeCount();
+}
+
+function relinkAlt(sectionId, elementId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (!ie) return;
+  pushUndo('relink alt to caption');
+  ie.altLinked = true;
+  ie.alt = ie.captionText;
+  updatePreviewInstant(ie.selector, 'alt', ie.alt);
+  renderEditor();
+  renderSections();
+  updateChangeCount();
+}
+
+function toggleAltEdit(sectionId, elementId) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section) return;
+  const ie = section.imageElements.find(i => i.id === elementId);
+  if (!ie) return;
+  ie._altOpen = !ie._altOpen;
+  renderEditor();
 }
 
 function deleteImage(sectionId, elementId) {
@@ -2362,15 +2647,20 @@ function restoreSection(sectionId) {
 // INSTANT PREVIEW - via postMessage bridge
 // ==========================================
 function postToPreview(msg) {
+  // If iframe is not ready yet, queue the message for delivery after load
+  if (!_iframeReady) {
+    _previewMsgQueue.push(msg);
+    return;
+  }
   const iframe = document.getElementById('previewFrame');
   if (iframe && iframe.contentWindow) {
     iframe.contentWindow.postMessage(msg, '*');
   }
 }
 
-function updatePreviewInstant(selector, type, value) {
+function updatePreviewInstant(selector, type, value, origValue) {
   if (type === 'text') {
-    postToPreview({ type: 'updateText', selector, value });
+    postToPreview({ type: 'updateText', selector, value, origValue });
   } else if (type === 'alt') {
     postToPreview({ type: 'updateAlt', selector, value });
   } else if (type === 'delete') {
@@ -2449,6 +2739,17 @@ function resetElement(sectionId, elementId, type) {
       ie.spacingBelow = ie.originalSpacingBelow;
       ie.newFileBase64 = null;
       ie.newFileName = null;
+      // Reset caption fields and restore alt-link state
+      if (ie.captionSupported) {
+        ie.captionText = ie.originalCaptionText;
+        ie.captionFontSize = ie.originalCaptionFontSize;
+        ie.captionFontColor = ie.originalCaptionFontColor;
+        ie.captionFontFamily = ie.originalCaptionFontFamily;
+        ie.captionSpacingBelow = ie.originalCaptionSpacingBelow;
+        ie.altLinked = (ie.originalAlt === ie.originalCaptionText || ie.originalCaptionText === '');
+        // Restore the visible caption in the live preview
+        postToPreview({ type: 'updateCaption', selector: ie.selector, value: ie.captionText, captionTag: ie.captionTag, captionClass: ie.captionClass });
+      }
     }
   }
   renderEditor();
@@ -2569,7 +2870,7 @@ function applySectionRename(sectionId, newName) {
     }
   }
 
-  checkApplyButton();
+  updateChangeCount();
 }
 
 // Reorder images in DOM to match the editor array order
@@ -2625,6 +2926,34 @@ function findImageBySrc(doc, src, sectionSelector) {
     }
   } catch(e) { console.warn('findImageBySrc failed:', e); }
   return null;
+}
+
+// Shared caption writer for Apply + Deploy DOM rebuilds.
+// Creates, updates, or removes the visible caption element for an image,
+// matching ie.captionText. Keeps live preview / Apply / Deploy in sync.
+function applyCaptionToDom(imgEl, ie) {
+  try {
+    if (!imgEl || !ie.captionSupported) return;
+    const doc = imgEl.ownerDocument;
+    const wrap = imgEl.closest('.award-item') || imgEl.closest('.strip-item') || imgEl.parentElement;
+    if (!wrap) return;
+    let cap = wrap.querySelector('.award-label, .caption, [class*="caption"], [class*="label"], figcaption');
+    const val = ie.captionText || '';
+    if (val === '') {
+      if (cap) cap.remove();
+      return;
+    }
+    if (!cap) {
+      cap = doc.createElement(ie.captionTag || 'p');
+      if (ie.captionClass) cap.className = ie.captionClass;
+      wrap.appendChild(cap);
+    }
+    if (val.indexOf('\n') !== -1) {
+      cap.innerHTML = val.replace(/\n/g, '<br>');
+    } else {
+      cap.textContent = val;
+    }
+  } catch (e) { console.warn('applyCaptionToDom failed:', e); }
 }
 
 function applyChanges() {
@@ -2785,7 +3114,8 @@ function applyChanges() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.spacingBelow === ie.originalSpacingBelow) return;
+          const captionChanged = ie.captionSupported && ie.captionText !== ie.originalCaptionText;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.spacingBelow === ie.originalSpacingBelow && !captionChanged) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             const previewSrc = ie.newFileBase64 ? 'data:image/jpeg;base64,' + ie.newFileBase64 : ie.src;
@@ -2797,12 +3127,10 @@ function applyChanges() {
             }
             if (ie.alt !== ie.originalAlt) {
               el.setAttribute('alt', ie.alt);
-              // Also update sibling caption text to match alt
-              const wrapper = el.closest('.strip-item');
-              if (wrapper) {
-                const cap = wrapper.querySelector('.caption');
-                if (cap) cap.textContent = ie.alt;
-              }
+            }
+            // Caption parity: create/update/remove the visible caption element.
+            if (captionChanged) {
+              applyCaptionToDom(el, ie);
             }
           }
         } catch (e) { console.warn('Selector failed:', ie.selector, e); }
@@ -3055,7 +3383,8 @@ async function deploySite() {
             }
             return;
           }
-          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.spacingBelow === ie.originalSpacingBelow) return;
+          const captionChangedDep = ie.captionSupported && ie.captionText !== ie.originalCaptionText;
+          if (ie.src === ie.originalSrc && ie.alt === ie.originalAlt && ie.imageScale === ie.originalImageScale && ie.spacingBelow === ie.originalSpacingBelow && !captionChangedDep) return;
           if (ie.isBgImage) {
             const style = el.getAttribute('style') || '';
             el.setAttribute('style', style.replace(/url\(['\"']?[^'\"\)\s]+['\"']?\)/, `url('${ie.src}')`));
@@ -3063,12 +3392,10 @@ async function deploySite() {
             if (ie.src !== ie.originalSrc) el.setAttribute('src', ie.src);
             if (ie.alt !== ie.originalAlt) {
               el.setAttribute('alt', ie.alt);
-              // Also update sibling caption text to match alt
-              const wrapper = el.closest('.strip-item');
-              if (wrapper) {
-                const cap = wrapper.querySelector('.caption');
-                if (cap) cap.textContent = ie.alt;
-              }
+            }
+            // Caption parity: create/update/remove the visible caption element.
+            if (captionChangedDep) {
+              applyCaptionToDom(el, ie);
             }
           }
           // Deploy image scale change
@@ -3222,6 +3549,13 @@ async function deploySite() {
       }
     });
 
+    // Clean up old deploy markers before adding new one
+    const headNodes = Array.from(doc.head.childNodes);
+    headNodes.forEach(node => {
+      if (node.nodeType === 8 && node.data && node.data.startsWith('deploy-')) {
+        node.remove();
+      }
+    });
     // Inject deploy marker for live-check polling
     const deployMarker = `deploy-${Date.now()}`;
     const markerComment = doc.createComment(deployMarker);
@@ -3281,12 +3615,14 @@ async function deploySite() {
 
     // Reset change tracking
     state.sections.forEach(s => {
+      s.originalName = s.name;
       s.textElements.forEach(te => {
         te.originalContent = te.content;
         te.originalInnerHTML = te.content;
         te.originalFontSize = te.fontSize;
         te.originalFontFamily = te.fontFamily;
         te.originalFontColor = te.fontColor;
+        te.originalSpacingBelow = te.spacingBelow;
       });
       // Remove deleted images from state (they've been removed from DOM)
       s.imageElements = s.imageElements.filter(ie => !ie.deleted);
@@ -3294,9 +3630,13 @@ async function deploySite() {
         ie.originalImageScale = ie.imageScale;
         ie.originalSrc = ie.src;
         ie.originalAlt = ie.alt;
+        ie.originalAlignment = ie.alignment;
+        ie.originalVerticalOffset = ie.verticalOffset;
+        ie.originalSpacingBelow = ie.spacingBelow;
         ie.newFileBase64 = null;
         ie.newFileName = null;
       });
+      s.originalImageOrder = s.imageElements.map(ie => ie.id);
       s.addedMedia = [];
       s.originalPaddingTop = s.paddingTop;
       s.originalPaddingBottom = s.paddingBottom;
@@ -3857,6 +4197,90 @@ function scrollPreviewToSection(sectionId) {
   const section = state.sections.find(s => s.id === sectionId);
   if (!section) return;
   postToPreview({ type: 'scrollTo', selector: section.outerSelector });
+}
+
+// Click-to-locate: map a click in the preview back to the matching section +
+// editor field, select it, and highlight the field.
+function handlePreviewClick(info) {
+  try {
+    let foundSection = null, foundElId = null, foundType = null;
+    const clickedSel = info.selector || '';
+    if (info.kind === 'image' && info.src) {
+      // 1) Exact selector match (handles the same filename in multiple sections)
+      if (clickedSel) {
+        for (const s of state.sections) {
+          const ie = s.imageElements.find(i => i.selector === clickedSel);
+          if (ie) { foundSection = s; foundElId = ie.id; foundType = 'image'; break; }
+        }
+      }
+      // 2) Fallback: match by filename
+      if (!foundSection) {
+        const file = info.src.split('/').pop().split('?')[0];
+        for (const s of state.sections) {
+          const ie = s.imageElements.find(i => (i.src || '').split('/').pop().split('?')[0] === file || (i.originalSrc || '').split('/').pop().split('?')[0] === file);
+          if (ie) { foundSection = s; foundElId = ie.id; foundType = 'image'; break; }
+        }
+      }
+    } else if (info.kind === 'text' && info.text) {
+      const want = info.text.replace(/\s+/g, ' ').trim();
+      // 1) Exact selector match against caption elements, then text elements
+      if (clickedSel) {
+        for (const s of state.sections) {
+          const ie = s.imageElements.find(i => i.captionSupported && i.captionSelector === clickedSel);
+          if (ie) { foundSection = s; foundElId = ie.id; foundType = 'image'; break; }
+        }
+        if (!foundSection) {
+          for (const s of state.sections) {
+            const te = s.textElements.find(t => t.selector === clickedSel);
+            if (te) { foundSection = s; foundElId = te.id; foundType = 'text'; break; }
+          }
+        }
+      }
+      // 2) Fallback: match by text content (captions first, then text elements)
+      if (!foundSection) {
+        for (const s of state.sections) {
+          const ie = s.imageElements.find(i => i.captionSupported && (i.captionText || '').replace(/\s+/g, ' ').trim() === want);
+          if (ie) { foundSection = s; foundElId = ie.id; foundType = 'image'; break; }
+        }
+      }
+      if (!foundSection) {
+        for (const s of state.sections) {
+          const te = s.textElements.find(t => (t.content || '').replace(/\s+/g, ' ').trim() === want ||
+                                              (t.content || '').replace(/\s+/g, ' ').trim().startsWith(want.slice(0, 40)));
+          if (te) { foundSection = s; foundElId = te.id; foundType = 'text'; break; }
+        }
+      }
+    }
+    if (!foundSection) return;
+    // Select the section and render the editor
+    if (state.selectedSectionId !== foundSection.id) {
+      state.selectedSectionId = foundSection.id;
+      renderSections();
+      renderEditor();
+    }
+    if (isMobileView()) mobileGoTo('editor');
+    // Scroll the editor to the matching field and flash-highlight it
+    setTimeout(function() {
+      const sel = '[data-element="' + foundElId + '"]';
+      const fields = document.querySelectorAll(sel);
+      let target = fields[0];
+      // Prefer the caption field for image-caption text clicks
+      if (foundType === 'image') {
+        const cap = document.querySelector(sel + '[data-type="caption"]');
+        if (cap) target = cap;
+      }
+      const group = target ? (target.closest('.element-group') || target) : null;
+      const scrollTo = group || target;
+      if (scrollTo && scrollTo.scrollIntoView) scrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (group) {
+        const prev = group.style.boxShadow;
+        group.style.transition = 'box-shadow 0.3s';
+        group.style.boxShadow = '0 0 0 2px #4a9eff';
+        setTimeout(function() { group.style.boxShadow = prev || ''; }, 1400);
+      }
+      if (target && target.focus) { try { target.focus(); } catch(e){} }
+    }, 60);
+  } catch (e) { console.warn('handlePreviewClick failed:', e); }
 }
 
 // ==========================================
