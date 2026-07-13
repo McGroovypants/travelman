@@ -1056,7 +1056,7 @@ body.col-resizing iframe { pointer-events: none; }
 // hash = sha256(password), encPat = PAT encrypted with that password via PBKDF2+AES-GCM
 const SITE_CREDS = [
   { hash: 'f99acf0dc1b902b0ef7437f2c94acaad0f356678055fe1a585336f6c5ab8948f', encPat: 'qGS4sH5RmcdMAAj+x7gBWWsCU5QtHLoMME3ln0ecLYOoTwdH64toabomf75EI4sLetwxDjwSy0Sk1Px1NbB5AcXAmBFxON5UyYLZeKTrq8pZQkCs' },
-  { hash: 'ad1454c7b344ab6c524d0164f993e110f18ab9e9b13bd6f96667875fa335f6e9', encPat: 'BciL7noolZpOBKlAubn5GSd1AR+my/AFmFZQulncsSYrx+9Z1fjrdtozWsyrSq59ZXzgutauysD6iIphI2GSUJsUyPFdD+nNMXSYGJt1zv17wyKv' }
+  { hash: 'ad1454c7b344ab6c524d0164f993e110f18ab9e9b13bd6f96667875fa335f6e9', encPat: 'jfkQ8WZyTmvlPbJcZmVNM01XqpBDnd6mKLG3pfF0TeatDcBILrMu5uXrVcm0SY7eVrCgoZLKhtfxEYhvw7ea362CWTw8OHfCMmrWGCilqyhKVnQv' }
 ];
 
 // Custom domain → GitHub owner/repo mapping
@@ -2019,7 +2019,16 @@ async function loadSiteAuto() {
     updateChangeCount();
     show('editor');
   } catch (err) {
-    alert('Failed to load site: ' + err.message);
+    if (String(err.message || '').includes('GitHub API 401')) {
+      try {
+        localStorage.removeItem('se_remembered');
+        sessionStorage.removeItem('se_local_session');
+      } catch(e) {}
+      alert('Saved GitHub credentials expired. Please enter the editor access code again.');
+      show('gate');
+    } else {
+      alert('Failed to load site: ' + err.message);
+    }
     console.error(err);
   } finally {
     hideLoading();
