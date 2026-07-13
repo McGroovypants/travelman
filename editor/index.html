@@ -1303,7 +1303,7 @@ let _previewMsgQueue = [];
 // ==========================================
 // VERSION
 // ==========================================
-const SE_BUILD = 'v1.0.0 (2026-06-19)';
+const SE_BUILD = 'v1.0.1 (2026-07-13)';
 // Debug panel removed for release; kept as a no-op so internal diagnostic
 // calls remain harmless. Set window.__seDebugOn = true in the console to
 // re-enable a lightweight log if ever needed.
@@ -1407,6 +1407,11 @@ const PREVIEW_BRIDGE = `<script>
           child.style.marginBottom = (i < kids.length - 1) ? d.gap + 'px' : '';
         });
       }
+    } else if (d.type === 'updateMenuLandingOffset') {
+      var el = document.querySelector(d.selector);
+      if (!el) return;
+      el.style.scrollMarginTop = d.value + 'px';
+      el.scrollIntoView({ behavior: 'auto', block: 'start' });
     } else if (d.type === 'getComputedColors') {
       var results = {};
       d.selectors.forEach(function(item) {
@@ -1696,6 +1701,9 @@ function parseHtml(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const sections = [];
+  const menuAnchorIds = new Set(Array.from(doc.querySelectorAll('nav a[href^="#"]'))
+    .map(link => link.getAttribute('href').slice(1))
+    .filter(Boolean));
 
   // Find all sections and major containers — body > div catches unlabelled containers like .quote-block
   const candidates = doc.querySelectorAll('section, [id], header, footer, main, nav, article, body > div');
@@ -1920,14 +1928,16 @@ function parseHtml(html) {
 
     if (textElements.length > 0 || imageElements.length > 0) {
       // Extract padding from inline style or default
-      let parsedPaddingTop = 40, parsedPaddingBottom = 40, parsedElementGap = 20;
+      let parsedPaddingTop = 40, parsedPaddingBottom = 40, parsedElementGap = 20, parsedMenuLandingOffset = 0;
       const elStyle = el.getAttribute('style') || '';
       const ptMatch = elStyle.match(/padding-top:\s*(\d+)/);
       const pbMatch = elStyle.match(/padding-bottom:\s*(\d+)/);
       const gapMatch = elStyle.match(/gap:\s*(\d+)/);
+      const menuOffsetMatch = elStyle.match(/scroll-margin-top:\s*(\d+)/);
       if (ptMatch) parsedPaddingTop = parseInt(ptMatch[1], 10);
       if (pbMatch) parsedPaddingBottom = parseInt(pbMatch[1], 10);
       if (gapMatch) parsedElementGap = parseInt(gapMatch[1], 10);
+      if (menuOffsetMatch) parsedMenuLandingOffset = parseInt(menuOffsetMatch[1], 10);
 
       // Find which text element matches the heading (for rename linkage)
       let nameElementId = null;
@@ -1949,9 +1959,12 @@ function parseHtml(html) {
         addedMedia: [],
         originalImageOrder: imageElements.map(ie => ie.id),
         outerSelector: buildSelector(el),
+        menuAnchor: !!el.id && menuAnchorIds.has(el.id),
+        menuLandingOffset: parsedMenuLandingOffset,
         paddingTop: parsedPaddingTop,
         paddingBottom: parsedPaddingBottom,
         elementGap: parsedElementGap,
+        originalMenuLandingOffset: parsedMenuLandingOffset,
         originalPaddingTop: parsedPaddingTop,
         originalPaddingBottom: parsedPaddingBottom,
         originalElementGap: parsedElementGap
@@ -2148,6 +2161,7 @@ function countSectionChanges(section) {
   if (section.paddingTop !== section.originalPaddingTop) count++;
   if (section.paddingBottom !== section.originalPaddingBottom) count++;
   if (section.elementGap !== section.originalElementGap) count++;
+  if (section.menuLandingOffset !== section.originalMenuLandingOffset) count++;
   return count;
 }
 
@@ -2200,6 +2214,18 @@ function renderEditor() {
       <span class="spacing-value" id="gap-val-${section.id}">${section.elementGap}px</span>
     </div>
   </div>`;
+
+  if (section.menuAnchor) {
+    html += `<div class="spacing-controls">
+      <div class="spacing-label">Menu Landing</div>
+      <div class="spacing-row">
+        <span>Offset</span>
+        <input type="range" min="0" max="240" step="4" value="${section.menuLandingOffset}"
+          oninput="handleMenuLandingOffset('${section.id}', this.value)">
+        <span class="spacing-value" id="menu-offset-val-${section.id}">${section.menuLandingOffset}px</span>
+      </div>
+    </div>`;
+  }
 
   // Text elements
   section.textElements.forEach((te, i) => {
@@ -2996,6 +3022,8 @@ function applyChanges() {
             sEl.style.paddingBottom = section.paddingBottom + 'px';
           if (section.elementGap !== section.originalElementGap)
             sEl.style.gap = section.elementGap + 'px';
+          if (section.menuLandingOffset !== section.originalMenuLandingOffset)
+            sEl.style.scrollMarginTop = section.menuLandingOffset + 'px';
         }
       } catch(e) { console.warn('Spacing apply failed:', e); }
 
@@ -3286,7 +3314,7 @@ async function deploySite() {
 
   try {
     // Build deploy summary for diagnostics
-    let deployLog = { text: 0, fontSize: 0, fontColor: 0, fontFamily: 0, imageScale: 0, spacing: 0, images: 0, selectorFails: 0 };
+    let deployLog = { text: 0, fontSize: 0, fontColor: 0, fontFamily: 0, imageScale: 0, spacing: 0, menuOffset: 0, images: 0, selectorFails: 0 };
 
     // Apply text changes to HTML
     let html = state.originalHtml;
@@ -3318,6 +3346,10 @@ async function deploySite() {
           if (section.elementGap !== section.originalElementGap) {
             sEl.style.gap = section.elementGap + 'px';
             deployLog.spacing++;
+          }
+          if (section.menuLandingOffset !== section.originalMenuLandingOffset) {
+            sEl.style.scrollMarginTop = section.menuLandingOffset + 'px';
+            deployLog.menuOffset++;
           }
         }
       } catch(e) { console.warn('Spacing deploy failed:', e); }
@@ -3576,7 +3608,7 @@ async function deploySite() {
     let newHtml = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 
     // Show deploy summary
-    const summary = `Deploying: ${deployLog.text} text, ${deployLog.fontSize} font-size, ${deployLog.fontFamily} font-family, ${deployLog.fontColor} colour, ${deployLog.imageScale} image-scale, ${deployLog.spacing} spacing, ${deployLog.selectorFails} selector fails`;
+    const summary = `Deploying: ${deployLog.text} text, ${deployLog.fontSize} font-size, ${deployLog.fontFamily} font-family, ${deployLog.fontColor} colour, ${deployLog.imageScale} image-scale, ${deployLog.spacing} spacing, ${deployLog.menuOffset} menu-offset, ${deployLog.selectorFails} selector fails`;
     console.log('[Deploy]', summary);
     showLoading(summary + ' — pushing...');
 
@@ -3650,6 +3682,7 @@ async function deploySite() {
       s.originalPaddingTop = s.paddingTop;
       s.originalPaddingBottom = s.paddingBottom;
       s.originalElementGap = s.elementGap;
+      s.originalMenuLandingOffset = s.menuLandingOffset;
     });
 
     btn.textContent = 'Deployed!';
@@ -4065,6 +4098,25 @@ function handleGapChange(sectionId, value) {
   if (valSpan) valSpan.textContent = section.elementGap + 'px';
   updateChangeCount();
   updateSpacingPreview(section);
+}
+
+function handleMenuLandingOffset(sectionId, value) {
+  const section = state.sections.find(s => s.id === sectionId);
+  if (!section || !section.menuAnchor) return;
+  if (!section._menuOffsetUndoPushed) {
+    pushUndo('change menu landing offset');
+    section._menuOffsetUndoPushed = true;
+    setTimeout(() => { section._menuOffsetUndoPushed = false; }, 500);
+  }
+  section.menuLandingOffset = parseInt(value, 10);
+  const valSpan = document.getElementById(`menu-offset-val-${sectionId}`);
+  if (valSpan) valSpan.textContent = section.menuLandingOffset + 'px';
+  updateChangeCount();
+  postToPreview({
+    type: 'updateMenuLandingOffset',
+    selector: section.outerSelector,
+    value: section.menuLandingOffset
+  });
 }
 
 
