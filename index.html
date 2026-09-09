@@ -249,6 +249,22 @@
       font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em;
     }
     footer a { color: var(--gold); text-decoration: none; }
+    .footer-social-links {
+      display: flex; justify-content: center; gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .footer-social-link {
+      width: 2.25rem; height: 2.25rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(201, 148, 74, 0.45); border-radius: 50%;
+      color: var(--gold); transition: background 0.25s, color 0.25s, transform 0.25s;
+    }
+    .footer-social-link:hover,
+    .footer-social-link:focus-visible {
+      background: var(--gold); color: var(--navy); transform: translateY(-2px);
+    }
+    .footer-social-link:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
+    .footer-social-link svg { width: 1rem; height: 1rem; fill: currentColor; }
 
     /* === RESPONSIVE === */
     @media (max-width: 768px) {
@@ -536,6 +552,14 @@
   <footer style="padding-bottom: 24px;">
     <p style="color: rgb(195, 195, 195);">© 2026 Jerry Bridge. All rights reserved.</p>
     <p style="margin-top: 0.5rem; color: rgb(195, 195, 195);">bridgetravels.com</p>
+    <div class="footer-social-links" aria-label="Jerry Bridge social profiles">
+      <a class="footer-social-link" href="https://www.linkedin.com/in/jerrytravelman/" target="_blank" rel="noopener noreferrer" aria-label="Jerry Bridge on LinkedIn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 9h4v12H3V9Zm6.5 0h3.8v1.64h.05c.53-1 1.82-2.05 3.75-2.05C21.1 8.59 22 11.2 22 14.6V21h-4v-5.68c0-1.35-.03-3.1-1.89-3.1-1.89 0-2.18 1.48-2.18 3V21h-4V9Z"/></svg>
+      </a>
+      <a class="footer-social-link" href="https://www.instagram.com/jerrybridge/" target="_blank" rel="noopener noreferrer" aria-label="Jerry Bridge on Instagram">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Zm5.25-3.5a1.25 1.25 0 1 1-1.25 1.25A1.25 1.25 0 0 1 17.25 6Z"/></svg>
+      </a>
+    </div>
   </footer>
 
   <!-- SCROLL ANIMATIONS -->
